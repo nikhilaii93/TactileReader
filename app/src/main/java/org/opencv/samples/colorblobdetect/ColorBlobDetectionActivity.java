@@ -328,12 +328,12 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
     /*
         Screen coordinate axis:
-        Y <-------------
+         Y -------------
                        |
                        |
                        |
-                      \|/
-                      \/ X
+                       |
+                       | X
      */
     private Point normalizePoint(Point P) {
 
@@ -391,6 +391,4 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         }
         return result;
     }
-
-
 }

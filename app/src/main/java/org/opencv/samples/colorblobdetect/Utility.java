@@ -62,12 +62,12 @@ public class Utility {
 
     /*
         Coordinate axis of file:
-            --------------> X
+            -------------- X
             |
             |
             |
-           \|/
-           \/ Y
+            |
+            | Y
      */
     public static void parseFile() {
         AssetManager assetManager = cont.getAssets();
@@ -96,13 +96,10 @@ public class Utility {
             boolean firstTime = true;
             // Skip the first empty line
             while ((line = br.readLine()) != null) {
-                Log.i("Line", line+'\n');
                 if (line.equals("=")) {
-                    Log.i("Line","kuch aaya1");
                     line = br.readLine();
                     states.add(line.trim());
                     if (!firstTime) {
-                        Log.i("Line","kuch aaya2");
                         statesPoints.add(contour);
                         // Mat m = Converters.vector_Point_to_Mat(contour);
                         // statesContours.add(new MatOfPoint2f(m));
@@ -110,7 +107,6 @@ public class Utility {
                     }
                     firstTime = false;
                 } else {
-                    Log.i("Line","kuch aaya3");
                     Point gP = getPoint(line);
                     gP.x -= xOffset;
                     gP.y -= yOffset;
