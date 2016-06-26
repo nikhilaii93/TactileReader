@@ -6,6 +6,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
 import org.opencv.android.LoaderCallbackInterface;
@@ -24,7 +26,10 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.imgproc.Moments;
 
 import android.app.Activity;
+import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -61,8 +66,11 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
     private int previousState = -1;
     private TextToSpeech tts;
+    String filename;
 
     private CameraBridgeViewBase mOpenCvCameraView;
+
+    SharedPreferences sp;
 
     private BaseLoaderCallback  mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -96,12 +104,17 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
         setContentView(R.layout.color_blob_detection_surface_view);
 
+//        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
+
+        sp = PreferenceManager.getDefaultSharedPreferences(this);
+        filename = sp.getString("context_name", null);
+
         mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.color_blob_detection_activity_surface_view);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
         mOpenCvCameraView.setCvCameraViewListener(this);
 
         mUtility = new Utility(getApplicationContext());
-        mUtility.parseFile();
+        mUtility.parseFile(filename);
     }
 
     @Override
@@ -140,14 +153,77 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         mBlobColorHsv = new Scalar(255);
         // mBlackColorHsv = new Scalar(0,0,0,255);
         SPECTRUM_SIZE = new Size(200, 64);
-        CONTOUR_COLOR = new Scalar(255,0,0,255);
+        CONTOUR_COLOR = new Scalar(0,255,0,255);
+
+        displayColor();
     }
 
     public void onCameraViewStopped() {
         mRgba.release();
     }
 
+    public void displayColor(){
+        JSONArray savedColor = new JSONArray();
+        try {
+            savedColor = new JSONArray(sp.getString("touched_color_hsv", "[]"));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        if(savedColor==null || savedColor.length()==0){
+            for (int i = 0; i < mBlobColorHsv.val.length; i++){
+                mBlobColorHsv.val[i] = 0;
+
+            }
+        }
+        else{
+            for (int i = 0; i < mBlobColorHsv.val.length; i++){
+                try {
+                    mBlobColorHsv.val[i] = savedColor.getDouble(i);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }
+//        for (int i = 0; i < mBlobColorHsv.val.length; i++){
+//            mBlobColorHsv.val[i] /= pointCount;
+//
+//        }
+
+        mBlobColorRgba = converScalarHsv2Rgba(mBlobColorHsv);
+
+        Log.i(TAG, "Saved rgba color: (" + mBlobColorRgba.val[0] + ", " + mBlobColorRgba.val[1] +
+                ", " + mBlobColorRgba.val[2] + ", " + mBlobColorRgba.val[3] + ")");
+
+        mDetector.setHsvColor(mBlobColorHsv);
+
+        Imgproc.resize(mDetector.getSpectrum(), mSpectrum, SPECTRUM_SIZE);
+
+        // mBlackDetector.setHsvColor(mBlackColorHsv);
+
+        /*
+        Log.i("BLACK", mBlackDetector.getmLowerBound().val[0]+" "
+                +mBlackDetector.getmLowerBound().val[1]+" "
+                +mBlackDetector.getmLowerBound().val[2]+" "
+                +mBlackDetector.getmLowerBound().val[3]);
+        Log.i("BLACK", mBlackDetector.getmUpperBound().val[0]+" "
+                +mBlackDetector.getmUpperBound().val[1]+" "
+                +mBlackDetector.getmUpperBound().val[2]+" "
+                +mBlackDetector.getmUpperBound().val[3]);
+        */
+
+        // Imgproc.resize(mBlackDetector.getSpectrum(), mSpectrum, SPECTRUM_SIZE);
+
+        mIsColorSelected = true;
+
+    }
+
     public boolean onTouch(View v, MotionEvent event) {
+        return false; // don't need subsequent touch events
+    }
+
+    public boolean onTouch2(View v, MotionEvent event) {
         int cols = mRgba.cols();
         int rows = mRgba.rows();
 
@@ -177,8 +253,34 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         // Calculate average color of touched region
         mBlobColorHsv = Core.sumElems(touchedRegionHsv);
         int pointCount = touchedRect.width*touchedRect.height;
-        for (int i = 0; i < mBlobColorHsv.val.length; i++)
-            mBlobColorHsv.val[i] /= pointCount;
+
+        JSONArray savedColor = new JSONArray();
+        try {
+            savedColor = new JSONArray(sp.getString("touched_color", "[]"));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        if(savedColor==null || savedColor.length()==0){
+            for (int i = 0; i < mBlobColorHsv.val.length; i++){
+                mBlobColorHsv.val[i] = 0;
+
+            }
+        }
+        else{
+            for (int i = 0; i < mBlobColorHsv.val.length; i++){
+                try {
+                    mBlobColorHsv.val[i] = savedColor.getDouble(i);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+            }
+        }
+//        for (int i = 0; i < mBlobColorHsv.val.length; i++){
+//            mBlobColorHsv.val[i] /= pointCount;
+//
+//        }
 
         mBlobColorRgba = converScalarHsv2Rgba(mBlobColorHsv);
 
@@ -389,6 +491,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                 result = !result;
             }
         }
+
         return result;
     }
 }

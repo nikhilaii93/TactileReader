@@ -6,6 +6,7 @@ package org.opencv.samples.colorblobdetect;
 
 import android.content.Context;
 import android.content.res.AssetManager;
+import android.os.Environment;
 import android.util.Log;
 
 import org.opencv.core.Mat;
@@ -16,6 +17,8 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.utils.Converters;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -69,7 +72,63 @@ public class Utility {
             |
             | Y
      */
-    public static void parseFile() {
+
+    public static void parseFile(String filename){
+        try {
+            String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)+ "/Tactile Reader";
+            File file = new File(path, filename);
+
+            Log.wtf("MTP", "parsing: " + path + "/"+filename);
+
+            BufferedReader br = new BufferedReader(new FileReader(file));
+
+            // Skip first line
+            String line = br.readLine();
+            // Fill corners
+            int t = 0;
+            while(t < 4 && (line = br.readLine()) != null) {
+                Log.i("Line", line+'\n');
+                Corners[t] = getPoint(line);
+                t++;
+            }
+            double xOffset = Corners[0].x;
+            double yOffset = Corners[0].y;
+
+            for (int i = 0; i < 4; i++) {
+                Corners[i].x -= xOffset;
+                Corners[i].y -= yOffset;
+            }
+
+            List<Point> contour = new ArrayList<Point>();
+            boolean firstTime = true;
+            // Skip the first empty line
+            while ((line = br.readLine()) != null) {
+                if (line.equals("=")) {
+                    line = br.readLine();
+                    states.add(line.trim());
+                    if (!firstTime) {
+                        statesPoints.add(contour);
+                        // Mat m = Converters.vector_Point_to_Mat(contour);
+                        // statesContours.add(new MatOfPoint2f(m));
+                        contour = new ArrayList<Point>();
+                    }
+                    firstTime = false;
+                } else {
+                    Point gP = getPoint(line);
+                    gP.x -= xOffset;
+                    gP.y -= yOffset;
+                    contour.add(gP);
+                }
+            }
+            statesPoints.add(contour);
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.wtf("MTP", "error in parsing");
+        }
+    }
+    public static void parseFile2() {
         AssetManager assetManager = cont.getAssets();
         try {
             InputStream in = assetManager.open("state_coordinates.txt");
