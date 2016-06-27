@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.media.MediaPlayer;
 import android.os.Environment;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.Display;
 
@@ -32,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.StringTokenizer;
 import java.util.zip.ZipEntry;
 
@@ -260,7 +262,8 @@ public class Utility {
      4. left tag @ 4 & right tag @ 1
      */
     // Retuns orientation number between 1 to 4
-    public int getOrientation() {
+    public static int getOrientation() {
         return 0;
     }
+
 }

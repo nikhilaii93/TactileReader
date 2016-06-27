@@ -1,6 +1,7 @@
 package org.opencv.samples.colorblobdetect;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Environment;
@@ -272,6 +273,8 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             }
             */
 
+            changeCalibrationState(contours, getApplicationContext());
+
             if (contours.size() == 2 && calibrated && (pulseState == 0)) {
                 pulseState = 1;
             }
@@ -290,7 +293,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                 // call out for calibration
                 final String toSpeak = "Calibrate your device, entire image not in view";
                 Log.i(TAG, "toSpeak: " + toSpeak);
-                tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+                 tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
                     @Override
                     public void onInit(int status) {
                         if (status != TextToSpeech.ERROR) {
@@ -495,6 +498,36 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             } else {
                 return true;
             }
+        }
+    }
+
+    public void changeCalibrationState(List<MatOfPoint> contours, Context applicationContext) {
+        if (contours.size() >= 2 && !calibrated) {
+            calibrated = isInView(contours);
+            calibrationCount = 0;
+        } else if (contours.size() >= 2 && calibrated && calibrationCount > 50) {
+            calibrated = isInView(contours);
+            calibrationCount = 0;
+        } else if (contours.size() >= 2 && calibrated && calibrationCount <= 50) {
+            calibrationCount++;
+        }
+
+        if (!calibrated && notCalibrationCount > 50) {
+            // call out for calibration
+            final String toSpeak = "Calibrate your device, entire image not in view";
+            Log.i(TAG, "toSpeak: " + toSpeak);
+            tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+                @Override
+                public void onInit(int status) {
+                    if (status != TextToSpeech.ERROR) {
+                        tts.setLanguage(Locale.ENGLISH);
+                        tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
+                    }
+                }
+            });
+            notCalibrationCount = 0;
+        } else if (!calibrated && notCalibrationCount <= 50) {
+            notCalibrationCount++;
         }
     }
 }
