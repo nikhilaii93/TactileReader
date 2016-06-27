@@ -77,9 +77,10 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
     // TODO use calibrated
     public static boolean calibrated = false;
     public static int calibrationCount = 0;
-    public static int notCalibrationCount = 0;
+    public static int noCalibrationCount = 0;
     public static int pulsedPolygon = -1;
     public static int pulseState = -1;
+    public static int calibrationFrameRate = 100;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -279,34 +280,6 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                 pulseState = 1;
             }
 
-            if (contours.size() >= 2 && !calibrated) {
-                calibrated = isInView(contours);
-                calibrationCount = 0;
-            } else if (contours.size() >= 2 && calibrated && calibrationCount > 50) {
-                calibrated = isInView(contours);
-                calibrationCount = 0;
-            } else if (contours.size() >= 2 && calibrated && calibrationCount <= 50) {
-                calibrationCount++;
-            }
-
-            if (!calibrated && notCalibrationCount > 50) {
-                // call out for calibration
-                final String toSpeak = "Calibrate your device, entire image not in view";
-                Log.i(TAG, "toSpeak: " + toSpeak);
-                 tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
-                    @Override
-                    public void onInit(int status) {
-                        if (status != TextToSpeech.ERROR) {
-                            tts.setLanguage(Locale.ENGLISH);
-                            tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
-                        }
-                    }
-                });
-                notCalibrationCount = 0;
-            } else if (!calibrated && notCalibrationCount <= 50) {
-                notCalibrationCount++;
-            }
-
             // Logic to call state name
             if (contours.size() == 3 && calibrated) {
                 Point[] centroids;
@@ -363,6 +336,19 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                                 });
                             }
                             if (mUtility.isPulse()) {
+                                final String toDescribe = "Pulse detected";
+                                tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+                                    @Override
+                                    public void onInit(int status) {
+                                        if (status != TextToSpeech.ERROR) {
+                                            tts.setLanguage(Locale.ENGLISH);
+                                            tts.speak(toDescribe, TextToSpeech.QUEUE_FLUSH, null);
+                                        }
+                                    }
+                                });
+
+
+                                /*
                                 final String toDescribe = mUtility.descriptions.get(pulsedPolygon);
                                 if (toDescribe.startsWith("$AUDIO$")) {
                                     String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
@@ -381,20 +367,21 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                                     });
                                 }
                             }
+                            */
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
+
+                Mat colorLabel = mRgba.submat(4, 68, 4, 68);
+                colorLabel.setTo(mBlobColorRgba);
+
+                //Mat spectrumLabel = mRgba.submat(4, 4 + mSpectrum.rows(), 70, 70 + mSpectrum.cols());
+                //mSpectrum.copyTo(spectrumLabel);
             }
-
-            Mat colorLabel = mRgba.submat(4, 68, 4, 68);
-            colorLabel.setTo(mBlobColorRgba);
-
-            //Mat spectrumLabel = mRgba.submat(4, 4 + mSpectrum.rows(), 70, 70 + mSpectrum.cols());
-            //mSpectrum.copyTo(spectrumLabel);
         }
-
-        return mRgba;
+            return mRgba;
     }
 
     /*
@@ -505,14 +492,14 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         if (contours.size() >= 2 && !calibrated) {
             calibrated = isInView(contours);
             calibrationCount = 0;
-        } else if (contours.size() >= 2 && calibrated && calibrationCount > 50) {
+        } else if (contours.size() >= 2 && calibrated && calibrationCount > calibrationFrameRate) {
             calibrated = isInView(contours);
             calibrationCount = 0;
-        } else if (contours.size() >= 2 && calibrated && calibrationCount <= 50) {
+        } else if (contours.size() >= 2 && calibrated && calibrationCount <= calibrationFrameRate) {
             calibrationCount++;
         }
 
-        if (!calibrated && notCalibrationCount > 50) {
+        if (!calibrated && noCalibrationCount > calibrationFrameRate) {
             // call out for calibration
             final String toSpeak = "Calibrate your device, entire image not in view";
             Log.i(TAG, "toSpeak: " + toSpeak);
@@ -525,9 +512,9 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                     }
                 }
             });
-            notCalibrationCount = 0;
-        } else if (!calibrated && notCalibrationCount <= 50) {
-            notCalibrationCount++;
+            noCalibrationCount = 0;
+        } else if (!calibrated && noCalibrationCount <= calibrationFrameRate) {
+            noCalibrationCount++;
         }
     }
 }

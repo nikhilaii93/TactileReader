@@ -11,6 +11,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.RadioGroup;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -28,6 +29,8 @@ public class StartActivity extends Activity {
     Button newCon, scan;
     SharedPreferences sp;
     TextView colortv;
+    RadioGroup or;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +84,18 @@ public class StartActivity extends Activity {
             }
 
         }
+
+        Utility.orientation = sp.getInt("orientation", 1);
+        or = (RadioGroup)findViewById(R.id.orient);
+        or.check(Utility.orientation);
+        or.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+                sp.edit().putInt("orientation", checkedId).apply();
+                Utility.orientation = checkedId;
+
+            }
+        });
 
         newCon = (Button)findViewById(R.id.newbutton);
         newCon.setOnClickListener(new View.OnClickListener() {

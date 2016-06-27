@@ -56,6 +56,7 @@ public class Utility {
     static List<MatOfPoint2f> regionContours;
     static List<List<Point>> regionPoints;
     static String audioFormat = ".wav";
+    public static int orientation;
 
     public Utility(Context currCont) {
         this.cont = currCont;
@@ -85,7 +86,63 @@ public class Utility {
             | Y
      */
 
-    public static void parseFile(String filename) {
+    public static void parseFile(String filename){
+        try {
+            String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)+ "/Tactile Reader";
+            File file = new File(path, filename);
+
+            Log.wtf("MTP", "parsing: " + path + "/"+filename);
+
+            BufferedReader br = new BufferedReader(new FileReader(file));
+
+            // Skip first line
+            String line = br.readLine();
+            // Fill corners
+            int t = 0;
+            while(t < 4 && (line = br.readLine()) != null) {
+                Log.i("Line", line+'\n');
+                Corners[t] = getPoint(line);
+                t++;
+            }
+            double xOffset = Corners[0].x;
+            double yOffset = Corners[0].y;
+
+            for (int i = 0; i < 4; i++) {
+                Corners[i].x -= xOffset;
+                Corners[i].y -= yOffset;
+            }
+
+            List<Point> contour = new ArrayList<Point>();
+            boolean firstTime = true;
+            // Skip the first empty line
+            while ((line = br.readLine()) != null) {
+                if (line.equals("=")) {
+                    line = br.readLine();
+                    titles.add(line.trim());
+                    if (!firstTime) {
+                        regionPoints.add(contour);
+                        // Mat m = Converters.vector_Point_to_Mat(contour);
+                        // statesContours.add(new MatOfPoint2f(m));
+                        contour = new ArrayList<Point>();
+                    }
+                    firstTime = false;
+                } else {
+                    Point gP = getPoint(line);
+                    gP.x -= xOffset;
+                    gP.y -= yOffset;
+                    contour.add(gP);
+                }
+            }
+            regionPoints.add(contour);
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.wtf("MTP", "error in parsing");
+        }
+    }
+
+    public static void parseFile2(String filename) {
         try {
             String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
             File file = new File(path + File.separator + filename, filename + ".txt");
@@ -263,7 +320,7 @@ public class Utility {
      */
     // Retuns orientation number between 1 to 4
     public static int getOrientation() {
-        return 0;
+        return orientation;
     }
 
 }

@@ -44,6 +44,45 @@
             android:id="@+id/colortv"
             android:layout_marginTop="10dp"/>
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Orientation"
+            android:textSize="25dp"
+            android:paddingTop="10dp"/>
+
+        <RadioGroup
+            android:id="@+id/orient"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <RadioButton android:id="@+id/radio_up"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:background="@drawable/up" />
+
+            <RadioButton android:id="@+id/radio_right"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:layout_marginLeft="20dp"
+                android:background="@drawable/right"/>
+
+            <RadioButton android:id="@+id/radio_down"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:background="@drawable/down"
+                android:layout_marginLeft="20dp"/>
+
+            <RadioButton android:id="@+id/radio_left"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:layout_marginLeft="20dp"
+                android:background="@drawable/left"/>
+
+        </RadioGroup>
+
 
     </LinearLayout>
 
