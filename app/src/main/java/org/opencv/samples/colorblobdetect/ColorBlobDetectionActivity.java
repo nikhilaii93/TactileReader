@@ -74,8 +74,9 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
     SharedPreferences sp;
 
     // TODO use calibrated
-    public static boolean calibrated = true;
-    public static int calibrationCheckCount = 0;
+    public static boolean calibrated = false;
+    public static int calibrationCount = 0;
+    public static int notCalibrationCount = 0;
     public static int pulsedPolygon = -1;
     public static int pulseState = -1;
 
@@ -275,21 +276,36 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                 pulseState = 1;
             }
 
-            if (contours.size() == 2 && !calibrated) {
+            if (contours.size() >= 2 && !calibrated) {
                 calibrated = isInView(contours);
-            } else if (calibrated && calibrationCheckCount > 50) {
+                calibrationCount = 0;
+            } else if (contours.size() >= 2 && calibrated && calibrationCount > 50) {
                 calibrated = isInView(contours);
-                calibrationCheckCount = 0;
+                calibrationCount = 0;
+            } else if (contours.size() >= 2 && calibrated && calibrationCount <= 50) {
+                calibrationCount++;
             }
 
-            if (contours.size() == 3 && !calibrated) {
-                calibrated = isInView(contours);
-                calibrationCheckCount++;
+            if (!calibrated && notCalibrationCount > 50) {
+                // call out for calibration
+                final String toSpeak = "Calibrate your device, entire image not in view";
+                Log.i(TAG, "toSpeak: " + toSpeak);
+                tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+                    @Override
+                    public void onInit(int status) {
+                        if (status != TextToSpeech.ERROR) {
+                            tts.setLanguage(Locale.ENGLISH);
+                            tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
+                        }
+                    }
+                });
+                notCalibrationCount = 0;
+            } else if (!calibrated && notCalibrationCount <= 50) {
+                notCalibrationCount++;
             }
 
             // Logic to call state name
             if (contours.size() == 3 && calibrated) {
-                calibrationCheckCount++;
                 Point[] centroids;
                 if (mUtility.getOrientation() % 2 == 0) {
                     centroids = mUtility.getCentroid(contours, mUtility.compX);
@@ -439,15 +455,25 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         if (mUtility.getOrientation() > 2) {
             lowestPoint = tempC[0];
         } else {
-            lowestPoint = tempC[tempC.length];
+            lowestPoint = tempC[tempC.length-1];
         }
         double ySQR = Math.pow(tempC[1].y - tempC[0].y, 2);
         double xSQR = Math.pow((double) tempC[1].x - (double) tempC[0].x, 2);
-        double screenDist = Math.pow(xSQR + ySQR, 0.5);
+        double screenDistX = Math.pow(xSQR + ySQR, 0.5);
 
-        double scalingFactor = Math.abs(mUtility.Corners[1].x - mUtility.Corners[0].x) / screenDist;
+        double scalingFactor = Math.abs(mUtility.Corners[1].x - mUtility.Corners[0].x) / screenDistX;
 
-        double extremeY = Math.max(mUtility.Corners[2].y - mUtility.Corners[1].y, mUtility.Corners[3].y - mUtility.Corners[0].y) / scalingFactor + lowestPoint.y;
+        ySQR = Math.pow(tempC[2].y - tempC[1].y, 2);
+        xSQR = Math.pow((double) tempC[2].x - (double) tempC[1].x, 2);
+        double screenDistY1 = Math.pow(xSQR + ySQR, 0.5);
+
+        ySQR = Math.pow(tempC[3].y - tempC[0].y, 2);
+        xSQR = Math.pow((double) tempC[3].x - (double) tempC[0].x, 2);
+        double screenDistY2 = Math.pow(xSQR + ySQR, 0.5);
+
+        double screenDistY = (screenDistY1 > screenDistY2) ? screenDistY1 : screenDistY2;
+
+        double extremeY = screenDistY / scalingFactor + lowestPoint.y;
 
         if (mUtility.getOrientation() % 2 == 1) {
             int cols = mRgba.cols();
