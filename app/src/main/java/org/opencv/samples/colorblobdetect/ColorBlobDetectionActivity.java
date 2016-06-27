@@ -265,10 +265,18 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             }
             */
 
+            if (contours.size() == 2) {
+                boolean calibrated = isInView(contours);
+            }
 
             // Logic to call state name
             if (contours.size() == 3) {
-                Point[] centroids = mUtility.getCentroid(contours);
+                Point[] centroids;
+                if (mUtility.getOrientation() % 2 == 0) {
+                    centroids = mUtility.getCentroid(contours, mUtility.compX);
+                } else {
+                    centroids = mUtility.getCentroid(contours, mUtility.compY);
+                }
                 fingerCentroidX = (int) centroids[1].x;
                 fingerCentroidY = (int) centroids[1].y;
 
@@ -349,38 +357,32 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                        | X
      */
     private Point normalizePoint(Point P) {
-
-        int l = blackCentroidsY.get(0) < blackCentroidsY.get(1) ? 0 : 1;
-        int h = blackCentroidsY.get(0) < blackCentroidsY.get(1) ? 1 : 0;
+        double scalingFactor;
 
         // Log.i(TAG, "Corner1: " + blackCentroidsX.get(l) + " " + blackCentroidsY.get(l));
         // Log.i(TAG, "Corner2: " + blackCentroidsX.get(h) + " " + blackCentroidsY.get(h));
 
         // Find screen dist
-        double ySQR = Math.pow((double) blackCentroidsY.get(h).intValue() - (double) blackCentroidsY.get(l).intValue(), 2);
-        double xSQR = Math.pow((double) blackCentroidsX.get(h).intValue() - (double) blackCentroidsX.get(l).intValue(), 2);
+        double ySQR = Math.pow((double) blackCentroidsY.get(1).intValue() - (double) blackCentroidsY.get(0).intValue(), 2);
+        double xSQR = Math.pow((double) blackCentroidsX.get(1).intValue() - (double) blackCentroidsX.get(0).intValue(), 2);
         double screenDist = Math.pow(xSQR + ySQR, 0.5);
 
-        double scalingFactor = Math.abs(mUtility.Corners[1].x - mUtility.Corners[0].x) / screenDist;
+        scalingFactor = Math.abs(mUtility.Corners[1].x - mUtility.Corners[0].x) / screenDist;
 
-        /*
-        double theta = Math.atan(((double)blackCentroidsY.get(h).intValue()-(double)blackCentroidsY.get(l).intValue())/((double)blackCentroidsX.get(h).intValue()-(double)blackCentroidsX.get(l).intValue()));
-
-        double xDash = P.x*Math.sin(theta) - P.y*Math.cos(theta);
-        double yDash = P.x*Math.cos(theta) + P.y*Math.sin(theta);
-
-        double x = mUtility.Corners[1].x - scalingFactor*(yDash - (double)blackCentroidsY.get(l).intValue());
-        double y = mUtility.Corners[0].y + scalingFactor*(xDash - (double)blackCentroidsX.get(l).intValue());
-        */
         double xDash = P.x * scalingFactor;
         double yDash = P.y * scalingFactor;
 
-        double theta = Math.atan(((double) blackCentroidsY.get(l).intValue() - (double) blackCentroidsY.get(h).intValue()) / ((double) blackCentroidsX.get(l).intValue() - (double) blackCentroidsX.get(h).intValue()));
-        // Log.i(TAG, "Theta: " + theta);
+        double theta = Math.atan(((double) blackCentroidsY.get(1).intValue() - (double) blackCentroidsY.get(0).intValue()) / ((double) blackCentroidsX.get(1).intValue() - (double) blackCentroidsX.get(0).intValue()));
+
+        if (mUtility.getOrientation() > 2) {
+            theta = theta - Math.toRadians(180);
+        }
+
         double x = xDash * Math.cos(theta) - yDash * Math.sin(theta);
         double y = xDash * Math.sin(theta) + yDash * Math.cos(theta);
-        // Log.i(TAG, "xDash, yDash: " + xDash +", "+yDash);
-        // Log.i(TAG, "x, y: " + x +", "+y);
+        Log.i("ROT", "Theta: " + Math.toDegrees(theta));
+        Log.i("ROT", "xDash, yDash: " + xDash + ", " + yDash);
+        Log.i("ROT", "x, y: " + x + ", " + y);
 
         Point normalizedP = new Point(x, y);
         return normalizedP;
@@ -393,5 +395,49 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         display.getSize(size);
 
         return size;
+    }
+
+    public boolean isInView(List<MatOfPoint> contours) {
+        Point[] tempC;
+        if (mUtility.getOrientation() % 2 == 0) {
+            tempC = mUtility.getCentroid(contours, mUtility.compY);
+        } else {
+            tempC = mUtility.getCentroid(contours, mUtility.compX);
+        }
+        Point lowestPoint;
+        if (mUtility.getOrientation() > 2) {
+            lowestPoint = tempC[0];
+        } else {
+            lowestPoint = tempC[tempC.length];
+        }
+        double ySQR = Math.pow(tempC[1].y - tempC[0].y, 2);
+        double xSQR = Math.pow((double) tempC[1].x - (double) tempC[0].x, 2);
+        double screenDist = Math.pow(xSQR + ySQR, 0.5);
+
+        double scalingFactor = Math.abs(mUtility.Corners[1].x - mUtility.Corners[0].x) / screenDist;
+
+        double extremeY = Math.max(mUtility.Corners[2].y - mUtility.Corners[1].y, mUtility.Corners[3].y - mUtility.Corners[0].y) / scalingFactor + lowestPoint.y;
+
+        if (mUtility.getOrientation() % 2 == 1) {
+            int cols = mRgba.cols();
+            int xOffset = (mOpenCvCameraView.getWidth() - cols) / 2;
+            extremeY += xOffset;
+
+            if (extremeY > mOpenCvCameraView.getWidth()) {
+                return false;
+            } else {
+                return true;
+            }
+        } else {
+            int rows = mRgba.rows();
+            int yOffset = (mOpenCvCameraView.getHeight() - rows) / 2;
+            extremeY += yOffset;
+
+            if (extremeY > mOpenCvCameraView.getHeight()) {
+                return false;
+            } else {
+                return true;
+            }
+        }
     }
 }

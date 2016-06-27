@@ -175,7 +175,7 @@ public class Utility {
         }
     };
 
-    public Point[] getCentroid(List<MatOfPoint> Contour) {
+    public Point[] getCentroid(List<MatOfPoint> Contour, Comparator comp) {
         Point[] centroids = new Point[Contour.size()];
         for (int i = 0; i < Contour.size(); i++) {
             Moments p = Imgproc.moments(Contour.get(i), false);
@@ -184,25 +184,31 @@ public class Utility {
             //Imgproc.circle(mRgba, new Point(cX, cY), 10, CONTOUR_COLOR);
             centroids[i] = new Point(cX, cY);
         }
-        int orienation = getOrientation();
-        if (orienation%2 == 0) {
-            /*horizontal*/
-            Arrays.sort(centroids, compX);
+        Arrays.sort(centroids, comp);
+
+        Log.i("ROT", "SORT1: " + centroids[0].x + " " + centroids[0].y);
+        Log.i("ROT", "SORT2: " + centroids[1].x + " " + centroids[1].y);
+        Log.i("ROT", "SORT3: " + centroids[2].x + " " + centroids[2].y);
+
+        if (getOrientation() == 1 || getOrientation() == 4) {
+            centroids[0].x -= centroids[2].x;
+            centroids[0].y -= centroids[2].y;
+            centroids[1].x -= centroids[2].x;
+            centroids[1].y -= centroids[2].y;
+            centroids[2].x -= centroids[2].x;
+            centroids[2].y -= centroids[2].y;
         } else {
-            /*vertical*/
-            Arrays.sort(centroids, compY);
+            centroids[1].x -= centroids[0].x;
+            centroids[1].y -= centroids[0].y;
+            centroids[2].x -= centroids[0].x;
+            centroids[2].y -= centroids[0].y;
+            centroids[0].x -= centroids[0].x;
+            centroids[0].y -= centroids[0].y;
         }
 
-        // Log.i(TAG, "SORT1: " + centroids[0].x + " " + centroids[0].y);
-        // Log.i(TAG, "SORT2: " + centroids[1].x + " " + centroids[1].y);
-        // Log.i(TAG, "SORT3: " + centroids[2].x + " " + centroids[2].y);
-
-        centroids[0].x -= centroids[2].x;
-        centroids[0].y -= centroids[2].y;
-        centroids[1].x -= centroids[2].x;
-        centroids[1].y -= centroids[2].y;
-        centroids[2].x -= centroids[2].x;
-        centroids[2].y -= centroids[2].y;
+        Log.i("ROT", "MOV1: " + centroids[0].x + " " + centroids[0].y);
+        Log.i("ROT", "MOV2: " + centroids[1].x + " " + centroids[1].y);
+        Log.i("ROT", "MOV3: " + centroids[2].x + " " + centroids[2].y);
 
         return centroids;
     }
