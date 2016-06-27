@@ -73,6 +73,12 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
     SharedPreferences sp;
 
+    // TODO use calibrated
+    public static boolean calibrated = true;
+    public static int calibrationCheckCount = 0;
+    public static int pulsedPolygon = -1;
+    public static int pulseState = -1;
+
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
@@ -265,12 +271,25 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             }
             */
 
-            if (contours.size() == 2) {
-                boolean calibrated = isInView(contours);
+            if (contours.size() == 2 && calibrated && (pulseState == 0)) {
+                pulseState = 1;
+            }
+
+            if (contours.size() == 2 && !calibrated) {
+                calibrated = isInView(contours);
+            } else if (calibrated && calibrationCheckCount > 50) {
+                calibrated = isInView(contours);
+                calibrationCheckCount = 0;
+            }
+
+            if (contours.size() == 3 && !calibrated) {
+                calibrated = isInView(contours);
+                calibrationCheckCount++;
             }
 
             // Logic to call state name
-            if (contours.size() == 3) {
+            if (contours.size() == 3 && calibrated) {
+                calibrationCheckCount++;
                 Point[] centroids;
                 if (mUtility.getOrientation() % 2 == 0) {
                     centroids = mUtility.getCentroid(contours, mUtility.compX);
@@ -301,19 +320,31 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                         Log.i(TAG, "polygontestpassed");
                         if (previousState != i) {
                             previousState = i;
-                            final String toSpeak = mUtility.titles.get(i);
-                            Log.i(TAG, "toSpeak: " + toSpeak);
-                            tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
-                                @Override
-                                public void onInit(int status) {
-                                    if (status != TextToSpeech.ERROR) {
-                                        tts.setLanguage(Locale.ENGLISH);
-                                        tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
+                            if (pulseState == -1) {
+                                pulseState = 0;
+                                pulsedPolygon = i;
+                            } else if (pulseState == 1 && pulsedPolygon == i) {
+                                pulseState = 2;
+                            } else if (pulseState == 1 && pulsedPolygon != i) {
+                                pulsedPolygon = i;
+                                pulseState = 0;
+                            }
+
+                            if (!mUtility.isPulse()) {
+                                final String toSpeak = mUtility.titles.get(i);
+                                Log.i(TAG, "toSpeak: " + toSpeak);
+                                tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+                                    @Override
+                                    public void onInit(int status) {
+                                        if (status != TextToSpeech.ERROR) {
+                                            tts.setLanguage(Locale.ENGLISH);
+                                            tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
+                                        }
                                     }
-                                }
-                            });
+                                });
+                            }
                             if (mUtility.isPulse()) {
-                                final String toDescribe = mUtility.descriptions.get(i);
+                                final String toDescribe = mUtility.descriptions.get(pulsedPolygon);
                                 if (toDescribe.startsWith("$AUDIO$")) {
                                     String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
                                     mUtility.playAudio(path + File.separator + toDescribe, toDescribe);
@@ -325,7 +356,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                                         public void onInit(int status) {
                                             if (status != TextToSpeech.ERROR) {
                                                 tts.setLanguage(Locale.ENGLISH);
-                                                tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
+                                                tts.speak(toDescribe, TextToSpeech.QUEUE_FLUSH, null);
                                             }
                                         }
                                     });

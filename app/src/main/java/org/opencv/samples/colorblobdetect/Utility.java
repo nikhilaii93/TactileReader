@@ -145,7 +145,7 @@ public class Utility {
 
     public static boolean isPulse() {
 
-        return false;
+        return (ColorBlobDetectionActivity.pulseState == 2);
     }
 
     public static void playAudio(String filePath, String fileName) {
