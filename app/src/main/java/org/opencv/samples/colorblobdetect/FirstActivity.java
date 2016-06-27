@@ -69,27 +69,6 @@ public class FirstActivity extends Activity {
 
         prog = new ProgressDialog(this);
 
-
-//        webview.getSettings().setLoadWithOverviewMode(true);
-//        webview.loadUrl(url);
-//        webview.setWebViewClient(new MyBrowser());
-//        final Activity MyActivity = this;
-//        webview.setWebChromeClient(new WebChromeClient() {
-//            public void onProgressChanged(WebView view, int progress) {
-//                //Make the bar disappear after URL is loaded, and changes string to Loading...
-//                int currProg = progress*100;
-//                prog.setMessage(currProg + "");
-////                MyActivity.setTitle("Loading...");
-////                MyActivity.setProgress(progress * 100); //Make the bar disappear after URL is loaded
-//
-//                // Return the app name after finish loading
-//                if (progress == 100) {
-////                    MyActivity.setTitle(R.string.app_name);
-//                    prog.dismiss();
-//                }
-//            }
-//        });
-
         prog.setMessage("Loading...");
         prog.show();
 
@@ -140,10 +119,6 @@ public class FirstActivity extends Activity {
 
             }
         });
-
-
-
-
     }
 
     @Override
@@ -193,14 +168,8 @@ public class FirstActivity extends Activity {
                 try{
                     URL downloadUrl = new URL(url);
                     URLConnection conexion = downloadUrl.openConnection();
-//                    conexion.addRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:6.0a2) Gecko/20110613 Firefox/6.0a2");
-//                    conexion.connect();
-
-//                    int lenghtOfFile = conexion.getContentLength();
-//                    Log.wtf("MTP", "Lenght of file: " + lenghtOfFile);
 
                     InputStream input = conexion.getInputStream();
-//                    InputStream input = new BufferedInputStream(downloadUrl.openStream());
                     OutputStream output = new FileOutputStream(file);
 
                     byte[] buffer = new byte[1024];
@@ -269,29 +238,6 @@ public class FirstActivity extends Activity {
 
         }
     }
-
-    private class MyWebViewClient extends WebViewClient {
-        @Override
-        public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            view.loadUrl(url);
-
-            if (!prog.isShowing()) {
-                prog.show();
-            }
-
-            return true;
-        }
-
-        @Override
-        public void onPageFinished(WebView view, String url) {
-            System.out.println("on finish");
-            if (prog.isShowing()) {
-                prog.dismiss();
-            }
-
-        }
-    }
-
 }
 
 

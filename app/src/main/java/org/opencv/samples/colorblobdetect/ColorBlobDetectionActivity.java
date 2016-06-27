@@ -453,17 +453,13 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
         double scalingFactor = Math.abs(mUtility.Corners[1].x - mUtility.Corners[0].x) / screenDistX;
 
-        ySQR = Math.pow(lowestPoint.y - mUtility.Corners[2].y, 2);
-        xSQR = Math.pow((double) lowestPoint.x - (double) mUtility.Corners[2].x, 2);
-        double screenDistY1 = Math.pow(xSQR + ySQR, 0.5);
+        double cornerDist_1_2 = Math.abs(mUtility.Corners[1].y - mUtility.Corners[2].y);
+        double cornerDist_0_3 = Math.abs(mUtility.Corners[0].y - mUtility.Corners[3].y);
+        double cornerDistY = (cornerDist_1_2 < cornerDist_0_3) ? cornerDist_0_3 : cornerDist_1_2;
 
-        ySQR = Math.pow(lowestPoint.y - mUtility.Corners[3].y, 2);
-        xSQR = Math.pow((double) lowestPoint.x - (double) mUtility.Corners[3].x, 2);
-        double screenDistY2 = Math.pow(xSQR + ySQR, 0.5);
 
-        double screenDistY = (screenDistY1 < screenDistY2) ? screenDistY1 : screenDistY2;
-
-        double extremeY = screenDistY / scalingFactor + lowestPoint.y;
+        // Actual Y would be lower than this as the image would be slightly tilted but to be on the safe side
+        double extremeY = cornerDistY/scalingFactor + lowestPoint.y;
 
         if (mUtility.getOrientation() % 2 == 1) {
             int cols = mRgba.cols();
