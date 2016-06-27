@@ -91,8 +91,16 @@ public class StartActivity extends Activity {
         or.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
+
+                int index = group.indexOfChild(findViewById(group.getCheckedRadioButtonId())) + 1;
+                Log.wtf("OCVSample::Activity", "Orientation: " + index);
+
                 sp.edit().putInt("orientation", checkedId).apply();
-                Utility.orientation = checkedId;
+                Utility.orientation = index;
+
+//                Log.wtf("OCVSample::Activity", "Orientation: " + Utility.orientation);
+
+
 
             }
         });

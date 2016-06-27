@@ -75,7 +75,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
     SharedPreferences sp;
 
     // TODO use calibrated
-    public static boolean calibrated = false;
+    public static boolean calibrated = true;
     public static int calibrationCount = 0;
     public static int noCalibrationCount = 0;
     public static int pulsedPolygon = -1;
@@ -274,7 +274,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             }
             */
 
-            changeCalibrationState(contours, getApplicationContext());
+            // changeCalibrationState(contours, getApplicationContext());
 
             if (contours.size() == 2 && calibrated && (pulseState == 0)) {
                 pulseState = 1;
@@ -453,15 +453,15 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
         double scalingFactor = Math.abs(mUtility.Corners[1].x - mUtility.Corners[0].x) / screenDistX;
 
-        ySQR = Math.pow(tempC[2].y - tempC[1].y, 2);
-        xSQR = Math.pow((double) tempC[2].x - (double) tempC[1].x, 2);
+        ySQR = Math.pow(lowestPoint.y - mUtility.Corners[2].y, 2);
+        xSQR = Math.pow((double) lowestPoint.x - (double) mUtility.Corners[2].x, 2);
         double screenDistY1 = Math.pow(xSQR + ySQR, 0.5);
 
-        ySQR = Math.pow(tempC[3].y - tempC[0].y, 2);
-        xSQR = Math.pow((double) tempC[3].x - (double) tempC[0].x, 2);
+        ySQR = Math.pow(lowestPoint.y - mUtility.Corners[3].y, 2);
+        xSQR = Math.pow((double) lowestPoint.x - (double) mUtility.Corners[3].x, 2);
         double screenDistY2 = Math.pow(xSQR + ySQR, 0.5);
 
-        double screenDistY = (screenDistY1 > screenDistY2) ? screenDistY1 : screenDistY2;
+        double screenDistY = (screenDistY1 < screenDistY2) ? screenDistY1 : screenDistY2;
 
         double extremeY = screenDistY / scalingFactor + lowestPoint.y;
 

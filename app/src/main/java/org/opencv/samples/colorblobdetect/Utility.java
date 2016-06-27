@@ -235,6 +235,14 @@ public class Utility {
     };
 
     public Point[] getCentroid(List<MatOfPoint> Contour, Comparator comp) {
+        if (Contour.size() == 2) {
+            return getCentroid2(Contour, comp);
+        } else  {
+            return getCentroid3(Contour, comp);
+        }
+    }
+
+    public Point[] getCentroid2(List<MatOfPoint> Contour, Comparator comp) {
         Point[] centroids = new Point[Contour.size()];
         for (int i = 0; i < Contour.size(); i++) {
             Moments p = Imgproc.moments(Contour.get(i), false);
@@ -245,9 +253,19 @@ public class Utility {
         }
         Arrays.sort(centroids, comp);
 
-        Log.i("ROT", "SORT1: " + centroids[0].x + " " + centroids[0].y);
-        Log.i("ROT", "SORT2: " + centroids[1].x + " " + centroids[1].y);
-        Log.i("ROT", "SORT3: " + centroids[2].x + " " + centroids[2].y);
+        return centroids;
+    }
+
+    public Point[] getCentroid3(List<MatOfPoint> Contour, Comparator comp) {
+        Point[] centroids = new Point[Contour.size()];
+        for (int i = 0; i < Contour.size(); i++) {
+            Moments p = Imgproc.moments(Contour.get(i), false);
+            int cX = (int) (p.get_m10() / p.get_m00());
+            int cY = (int) (p.get_m01() / p.get_m00());
+            //Imgproc.circle(mRgba, new Point(cX, cY), 10, CONTOUR_COLOR);
+            centroids[i] = new Point(cX, cY);
+        }
+        Arrays.sort(centroids, comp);
 
         if (getOrientation() == 1 || getOrientation() == 4) {
             centroids[0].x -= centroids[2].x;
@@ -264,10 +282,6 @@ public class Utility {
             centroids[0].x -= centroids[0].x;
             centroids[0].y -= centroids[0].y;
         }
-
-        Log.i("ROT", "MOV1: " + centroids[0].x + " " + centroids[0].y);
-        Log.i("ROT", "MOV2: " + centroids[1].x + " " + centroids[1].y);
-        Log.i("ROT", "MOV3: " + centroids[2].x + " " + centroids[2].y);
 
         return centroids;
     }
