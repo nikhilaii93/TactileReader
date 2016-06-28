@@ -74,7 +74,6 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
     SharedPreferences sp;
 
-    // TODO use calibrated
     public static boolean calibrated = false;
     public static int calibrationTagsNotVisible = 0;
     public static int calibrationCount = 0;
@@ -83,10 +82,8 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
     public static int pulseState = -1;
     public static int pulseDuration = 0;
     public static int pulseDurationLimit = 5;
-    public static int calibrationFrameRate = 40;
-
-    public static int ttsFrameRate = 10;
-    public static int prevTtsCount = ttsFrameRate;
+    public static int calibrationFrameRate = 100;
+    public static int continousFrameBehaivior = 0;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -133,6 +130,17 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
         mUtility = new Utility(getApplicationContext());
         mUtility.parseFile(filename);
+
+        final String speakStr = "Scanning started";
+        tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if (status != TextToSpeech.ERROR) {
+                    tts.setLanguage(Locale.ENGLISH);
+                    tts.speak(speakStr, TextToSpeech.QUEUE_FLUSH, null);
+                }
+            }
+        });
     }
 
     @Override
@@ -269,18 +277,6 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             Imgproc.drawContours(mRgba, contours, -1, CONTOUR_COLOR);
             // Imgproc.drawContours(mRgba, blackContours, -1, CONTOUR_COLOR);
 
-            /*
-            blackCentroidsX = new ArrayList<Integer>();
-            blackCentroidsY = new ArrayList<Integer>();
-            for (int i = 0; i < blackContours.size(); i++) {
-                Point bcP = getCentroid(blackContours.get(i));
-                Log.i("BLACK", "Identified");
-                blackCentroidsX.add((int)bcP.x);
-                blackCentroidsY.add((int)bcP.y);
-            }
-            */
-
-            prevTtsCount = ((prevTtsCount + 1) < ttsFrameRate) ? prevTtsCount : ttsFrameRate;
             changeCalibrationState(contours, getApplicationContext());
             if (contours.size() == 2 && calibrated && (pulseState == 0)) {
                 pulseDuration++;
@@ -295,7 +291,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             Log.i("PULSE", "ContourSize: " + contours.size());
 
             // Logic to call state name
-            if (contours.size() == 3 && calibrated && (prevTtsCount == ttsFrameRate)) {
+            if (contours.size() == 3 && calibrated && !tts.isSpeaking() && !mUtility.mp.isPlaying()) {
                 pulseDuration = 0;
                 Point[] centroids;
                 if (mUtility.getOrientation() % 2 == 0) {
@@ -331,7 +327,6 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                             pulsedPolygon = i;
                         } else if (pulseState == 1 && pulsedPolygon == i) {
                             pulseState = 2;
-                            Log.i("PULSE", "PulsedPolygon: PulsedPolygon: PulsedPolygon: PulsedPolygon: PulsedPolygon: PulsedPolygon: ");
                         } else if (pulseState == 1 && pulsedPolygon != i) {
                             pulsedPolygon = i;
                             pulseState = 0;
@@ -341,52 +336,33 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
                         if (previousState != i && !mUtility.isPulse()) {
                             previousState = i;
-                            final String toSpeak = mUtility.titles.get(i);
+                            String toSpeak = mUtility.titles.get(i);
                             Log.i("PULSE", "toSpeak: " + toSpeak);
-                            tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
-                                @Override
-                                public void onInit(int status) {
-                                    if (status != TextToSpeech.ERROR) {
-                                        tts.setLanguage(Locale.ENGLISH);
-                                        tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
-                                    }
-                                }
-                            });
+                            speakOut(toSpeak, getApplicationContext());
                         }
                         if (mUtility.isPulse() && previousState == i) {
                             pulseState = 0;
-                            final String toDescribe = "Pulse detected";
-                            tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
-                                @Override
-                                public void onInit(int status) {
-                                    if (status != TextToSpeech.ERROR) {
-                                        tts.setLanguage(Locale.ENGLISH);
-                                        tts.speak(toDescribe, TextToSpeech.QUEUE_FLUSH, null);
-                                    }
-                                }
-                            });
+                            // String toDescribe = "Pulse detected";
+                            // speakOut(toDescribe, getApplicationContext());
 
-
-                                /*
-                                final String toDescribe = mUtility.descriptions.get(pulsedPolygon);
-                                if (toDescribe.startsWith("$AUDIO$")) {
-                                    String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
-                                    mUtility.playAudio(path + File.separator + toDescribe, toDescribe);
-                                    Log.wtf("MTP", "parsing: " + path + "/" + toDescribe);
-                                } else {
-                                    Log.i(TAG, "toDescribe: " + toDescribe);
-                                    tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
-                                        @Override
-                                        public void onInit(int status) {
-                                            if (status != TextToSpeech.ERROR) {
-                                                tts.setLanguage(Locale.ENGLISH);
-                                                tts.speak(toDescribe, TextToSpeech.QUEUE_FLUSH, null);
-                                            }
+                            final String toDescribe = mUtility.descriptions.get(pulsedPolygon);
+                            if (toDescribe.startsWith("$AUDIO$")) {
+                                String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
+                                mUtility.playAudio(path + File.separator + toDescribe, toDescribe);
+                                Log.wtf("MTP", "parsing: " + path + "/" + toDescribe);
+                            } else {
+                                Log.i(TAG, "toDescribe: " + toDescribe);
+                                tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+                                    @Override
+                                    public void onInit(int status) {
+                                        if (status != TextToSpeech.ERROR) {
+                                            tts.setLanguage(Locale.ENGLISH);
+                                            tts.speak(toDescribe, TextToSpeech.QUEUE_FLUSH, null);
                                         }
-                                    });
-                                }
+                                    }
+                                });
                             }
-                            */
+                        }
                         }
                         break;
 
@@ -399,7 +375,6 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                 //Mat spectrumLabel = mRgba.submat(4, 4 + mSpectrum.rows(), 70, 70 + mSpectrum.cols());
                 //mSpectrum.copyTo(spectrumLabel);
             }
-        }
         return mRgba;
     }
 
@@ -506,68 +481,65 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
     }
 
     public void changeCalibrationState(List<MatOfPoint> contours, Context applicationContext) {
+        boolean prevCalibrationState = calibrated;
         if (contours.size() == 0 || contours.size() == 1) {
             calibrationTagsNotVisible++;
             calibrationCount = 0;
             noCalibrationCount = 0;
-            calibrated = false;
-            if (calibrationTagsNotVisible > calibrationFrameRate * 2) {
-                // TODO
+            continousFrameBehaivior++;
+            if (continousFrameBehaivior > 3) {
+                calibrated = false;
+                continousFrameBehaivior = 0;
+            }
+            Log.i("YAHA", "NotCalibrated2");
+            if ((prevCalibrationState != calibrated) || (calibrationTagsNotVisible > calibrationFrameRate * 2)) {
+                String toSpeak = "Image not placed";
+                speakOut(toSpeak, applicationContext);
                 calibrationTagsNotVisible = 0;
             }
         } else if (contours.size() == 2 || contours.size() == 3) {
+            continousFrameBehaivior = 0;
             calibrationTagsNotVisible = 0;
-            boolean prevCalibrationState = calibrated;
             calibrated = isInView(contours);
+            Log.i("CALIBRATION", "IsCalibrated: " + calibrated);
             if (calibrated) {
                 calibrationCount++;
                 calibrationCount = calibrationCount%calibrationFrameRate;
                 noCalibrationCount = 0;
                 if (prevCalibrationState != calibrated) {
-                    final String toSpeak = "Image is now in view";
-                    tts = new TextToSpeech(applicationContext, new TextToSpeech.OnInitListener() {
-                        @Override
-                        public void onInit(int status) {
-                            if (status != TextToSpeech.ERROR) {
-                                tts.setLanguage(Locale.ENGLISH);
-                                tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
-                            }
-                        }
-                    });
+                    calibrationCount = 0;
+                    final String toSpeak = "Image now in view";
+                    Log.i("YAHA", "Calibrated");
+                    speakOut(toSpeak, applicationContext);
                 }
             } else {
                 noCalibrationCount++;
-                noCalibrationCount = noCalibrationCount%calibrationFrameRate;
                 calibrationCount = 0;
-                if (prevCalibrationState != calibrated) {
-                    final String toSpeak = "Entire image not visible";
-                    tts = new TextToSpeech(applicationContext, new TextToSpeech.OnInitListener() {
-                        @Override
-                        public void onInit(int status) {
-                            if (status != TextToSpeech.ERROR) {
-                                tts.setLanguage(Locale.ENGLISH);
-                                tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
-                            }
-                        }
-                    });
+                if ((prevCalibrationState != calibrated) || (noCalibrationCount > calibrationFrameRate)) {
+                    noCalibrationCount = 0;
+                    final String toSpeak = "Only part of image visible";
+                    Log.i("YAHA", "NotCalibrated");
+                    speakOut(toSpeak, applicationContext);
                 }
             }
         } else {
-            // TODO
+            String toSpeak = "Conditions not suitable, many tags visible";
+            speakOut(toSpeak, applicationContext);
         }
     }
 
     public void speakOut(String toSpeak, Context applicationContext) {
-        final String speakStr = toSpeak;
-        prevTtsCount = 0;
-        tts = new TextToSpeech(applicationContext, new TextToSpeech.OnInitListener() {
-            @Override
-            public void onInit(int status) {
-                if (status != TextToSpeech.ERROR) {
-                    tts.setLanguage(Locale.ENGLISH);
-                    tts.speak(speakStr, TextToSpeech.QUEUE_FLUSH, null);
+        if (!mUtility.mp.isPlaying() && !tts.isSpeaking()) {
+            final String speakStr = toSpeak;
+            tts = new TextToSpeech(applicationContext, new TextToSpeech.OnInitListener() {
+                @Override
+                public void onInit(int status) {
+                    if (status != TextToSpeech.ERROR) {
+                        tts.setLanguage(Locale.ENGLISH);
+                        tts.speak(speakStr, TextToSpeech.QUEUE_FLUSH, null);
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 }

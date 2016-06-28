@@ -57,6 +57,7 @@ public class Utility {
     static List<List<Point>> regionPoints;
     static String audioFormat = ".wav";
     public static int orientation;
+    public static MediaPlayer mp = new MediaPlayer();
 
     public Utility(Context currCont) {
         this.cont = currCont;
@@ -208,7 +209,7 @@ public class Utility {
 
     public static void playAudio(String filePath, String fileName) {
         Context appContext = cont;
-        MediaPlayer mp = new MediaPlayer();
+        mp = new MediaPlayer();
         try {
             mp.setDataSource(filePath + File.separator + fileName + audioFormat);
             mp.prepare();

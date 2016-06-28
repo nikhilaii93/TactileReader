@@ -85,9 +85,11 @@ public class StartActivity extends Activity {
 
         }
 
-        Utility.orientation = sp.getInt("orientation", 1);
+        int checkedOr = sp.getInt("orientation", 1);
+
         or = (RadioGroup)findViewById(R.id.orient);
-        or.check(Utility.orientation);
+        Utility.orientation = or.indexOfChild(findViewById(checkedOr)) + 1;
+        or.check(checkedOr);
         or.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
