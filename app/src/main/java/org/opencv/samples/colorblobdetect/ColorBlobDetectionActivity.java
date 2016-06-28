@@ -49,6 +49,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
     private Mat mRgba;
     private Scalar mBlobColorRgba;
     private Scalar mBlobColorHsv;
+    private TextToSpeech tts;
 
     // private Scalar               mBlackColorHsv;
 
@@ -67,7 +68,6 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
     private int fingerCentroidY;
 
     private int previousState = -1;
-    private TextToSpeech tts;
     String filename;
 
     private CameraBridgeViewBase mOpenCvCameraView;
@@ -76,13 +76,17 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
     // TODO use calibrated
     public static boolean calibrated = false;
+    public static int calibrationTagsNotVisible = 0;
     public static int calibrationCount = 0;
     public static int noCalibrationCount = 0;
     public static int pulsedPolygon = -1;
     public static int pulseState = -1;
     public static int pulseDuration = 0;
     public static int pulseDurationLimit = 5;
-    public static int calibrationFrameRate = 100;
+    public static int calibrationFrameRate = 40;
+
+    public static int ttsFrameRate = 10;
+    public static int prevTtsCount = ttsFrameRate;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -276,6 +280,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             }
             */
 
+            prevTtsCount = ((prevTtsCount + 1) < ttsFrameRate) ? prevTtsCount : ttsFrameRate;
             changeCalibrationState(contours, getApplicationContext());
             if (contours.size() == 2 && calibrated && (pulseState == 0)) {
                 pulseDuration++;
@@ -290,7 +295,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             Log.i("PULSE", "ContourSize: " + contours.size());
 
             // Logic to call state name
-            if (contours.size() == 3 && calibrated) {
+            if (contours.size() == 3 && calibrated && (prevTtsCount == ttsFrameRate)) {
                 pulseDuration = 0;
                 Point[] centroids;
                 if (mUtility.getOrientation() % 2 == 0) {
@@ -418,7 +423,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         double xSQR = Math.pow((double) blackCentroidsX.get(1).intValue() - (double) blackCentroidsX.get(0).intValue(), 2);
         double screenDist = Math.pow(xSQR + ySQR, 0.5);
 
-        scalingFactor = Math.abs(mUtility.Corners[1].x - mUtility.Corners[0].x) / screenDist;
+        scalingFactor = ((double) Math.abs(mUtility.Corners[1].x - mUtility.Corners[0].x)) / screenDist;
 
         double xDash = P.x * scalingFactor;
         double yDash = P.y * scalingFactor;
@@ -431,9 +436,9 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
         double x = xDash * Math.cos(theta) - yDash * Math.sin(theta);
         double y = xDash * Math.sin(theta) + yDash * Math.cos(theta);
-        Log.i("ROT", "Theta: " + Math.toDegrees(theta));
-        Log.i("ROT", "xDash, yDash: " + xDash + ", " + yDash);
-        Log.i("ROT", "x, y: " + x + ", " + y);
+        Log.i("ROTATION", "Theta: " + Math.toDegrees(theta));
+        Log.i("ROTATION", "xDash, yDash: " + xDash + ", " + yDash);
+        Log.i("ROTATION", "x, y: " + x + ", " + y);
 
         Point normalizedP = new Point(x, y);
         return normalizedP;
@@ -461,26 +466,26 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         } else {
             lowestPoint = tempC[1];
         }
-        double ySQR = Math.pow(tempC[1].y - tempC[0].y, 2);
+        double ySQR = Math.pow((double) tempC[1].y - (double) tempC[0].y, 2);
         double xSQR = Math.pow((double) tempC[1].x - (double) tempC[0].x, 2);
         double screenDistX = Math.pow(xSQR + ySQR, 0.5);
 
-        double scalingFactor = Math.abs(mUtility.Corners[1].x - mUtility.Corners[0].x) / screenDistX;
+        double scalingFactor = ((double) Math.abs(mUtility.Corners[1].x - mUtility.Corners[0].x)) / screenDistX;
 
         double cornerDist_1_2 = Math.abs(mUtility.Corners[1].y - mUtility.Corners[2].y);
         double cornerDist_0_3 = Math.abs(mUtility.Corners[0].y - mUtility.Corners[3].y);
         double cornerDistY = (cornerDist_1_2 < cornerDist_0_3) ? cornerDist_0_3 : cornerDist_1_2;
 
         // Actual Y would be lower than this as the image would be slightly tilted but to be on the safe side
-        double extremeY = cornerDistY / scalingFactor + lowestPoint.y;
+        double extremeY = cornerDistY / scalingFactor + lowestPoint.x;
 
         if (mUtility.getOrientation() % 2 == 1) {
             int cols = mRgba.cols();
             int xOffset = (mOpenCvCameraView.getWidth() - cols) / 2;
             extremeY += xOffset;
 
-            Log.i("CALI", "extremeY+Offset" + "\t" + "lX" + "\t" + "lY" + "\t" + "cols" + "\t" + "Width" + "\t" + "Height");
-            Log.i("CALI", extremeY + " " + lowestPoint.x + " " + lowestPoint.y + " " + cols + " " + mOpenCvCameraView.getWidth() + " " + mOpenCvCameraView.getHeight());
+            Log.i("CALIBRATION", "extremeY+Offset" + "\t" + "lX" + "\t" + "lY");
+            Log.i("CALIBRATION", extremeY + " " + lowestPoint.x + " " + lowestPoint.y);
 
             if (extremeY > mOpenCvCameraView.getWidth()) {
                 return false;
@@ -501,52 +506,68 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
     }
 
     public void changeCalibrationState(List<MatOfPoint> contours, Context applicationContext) {
-        if (calibrated && calibrationCount > calibrationFrameRate) {
-            final String toSpeak = "Camera Calibrated";
-            Log.i("CALI", toSpeak);
-            /*
-            Log.i(TAG, "toSpeak: " + toSpeak);
-            tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
-                @Override
-                public void onInit(int status) {
-                    if (status != TextToSpeech.ERROR) {
-                        tts.setLanguage(Locale.ENGLISH);
-                        tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
-                    }
-                }
-            });
-            */
-        }
-
-        if (contours.size() >= 2 && !calibrated) {
-            calibrated = isInView(contours);
+        if (contours.size() == 0 || contours.size() == 1) {
+            calibrationTagsNotVisible++;
             calibrationCount = 0;
-        } else if (contours.size() >= 2 && calibrated && calibrationCount > calibrationFrameRate) {
-            calibrated = isInView(contours);
-            calibrationCount = 0;
-        } else if (contours.size() >= 2 && calibrated && calibrationCount <= calibrationFrameRate) {
-            calibrationCount++;
-        }
-
-        if (!calibrated && noCalibrationCount > calibrationFrameRate) {
-            // call out for calibration
-            final String toSpeak = "Calibrate your camera, entire image not in view";
-            Log.i("CALI", toSpeak);
-            /*
-            Log.i(TAG, "toSpeak: " + toSpeak);
-            tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
-                @Override
-                public void onInit(int status) {
-                    if (status != TextToSpeech.ERROR) {
-                        tts.setLanguage(Locale.ENGLISH);
-                        tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
-                    }
-                }
-            });
-            */
             noCalibrationCount = 0;
-        } else if (!calibrated && noCalibrationCount <= calibrationFrameRate) {
-            noCalibrationCount++;
+            calibrated = false;
+            if (calibrationTagsNotVisible > calibrationFrameRate * 2) {
+                // TODO
+                calibrationTagsNotVisible = 0;
+            }
+        } else if (contours.size() == 2 || contours.size() == 3) {
+            calibrationTagsNotVisible = 0;
+            boolean prevCalibrationState = calibrated;
+            calibrated = isInView(contours);
+            if (calibrated) {
+                calibrationCount++;
+                calibrationCount = calibrationCount%calibrationFrameRate;
+                noCalibrationCount = 0;
+                if (prevCalibrationState != calibrated) {
+                    final String toSpeak = "Image is now in view";
+                    tts = new TextToSpeech(applicationContext, new TextToSpeech.OnInitListener() {
+                        @Override
+                        public void onInit(int status) {
+                            if (status != TextToSpeech.ERROR) {
+                                tts.setLanguage(Locale.ENGLISH);
+                                tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
+                            }
+                        }
+                    });
+                }
+            } else {
+                noCalibrationCount++;
+                noCalibrationCount = noCalibrationCount%calibrationFrameRate;
+                calibrationCount = 0;
+                if (prevCalibrationState != calibrated) {
+                    final String toSpeak = "Entire image not visible";
+                    tts = new TextToSpeech(applicationContext, new TextToSpeech.OnInitListener() {
+                        @Override
+                        public void onInit(int status) {
+                            if (status != TextToSpeech.ERROR) {
+                                tts.setLanguage(Locale.ENGLISH);
+                                tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
+                            }
+                        }
+                    });
+                }
+            }
+        } else {
+            // TODO
         }
+    }
+
+    public void speakOut(String toSpeak, Context applicationContext) {
+        final String speakStr = toSpeak;
+        prevTtsCount = 0;
+        tts = new TextToSpeech(applicationContext, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if (status != TextToSpeech.ERROR) {
+                    tts.setLanguage(Locale.ENGLISH);
+                    tts.speak(speakStr, TextToSpeech.QUEUE_FLUSH, null);
+                }
+            }
+        });
     }
 }
