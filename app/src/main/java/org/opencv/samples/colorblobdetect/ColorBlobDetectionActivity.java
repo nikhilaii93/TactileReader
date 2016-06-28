@@ -75,11 +75,13 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
     SharedPreferences sp;
 
     // TODO use calibrated
-    public static boolean calibrated = true;
+    public static boolean calibrated = false;
     public static int calibrationCount = 0;
     public static int noCalibrationCount = 0;
     public static int pulsedPolygon = -1;
     public static int pulseState = -1;
+    public static int pulseDuration = 0;
+    public static int pulseDurationLimit = 5;
     public static int calibrationFrameRate = 100;
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
@@ -274,14 +276,22 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             }
             */
 
-            // changeCalibrationState(contours, getApplicationContext());
-
+            changeCalibrationState(contours, getApplicationContext());
             if (contours.size() == 2 && calibrated && (pulseState == 0)) {
-                pulseState = 1;
+                pulseDuration++;
+                Log.i("PULSE", "PulseDuration: " + pulseDuration);
+                if (pulseDuration > pulseDurationLimit) {
+                    pulseState = 1;
+                    pulseDuration = 0;
+                }
             }
+
+            Log.i("PULSE", "PulseState: " + pulseState);
+            Log.i("PULSE", "ContourSize: " + contours.size());
 
             // Logic to call state name
             if (contours.size() == 3 && calibrated) {
+                pulseDuration = 0;
                 Point[] centroids;
                 if (mUtility.getOrientation() % 2 == 0) {
                     centroids = mUtility.getCentroid(contours, mUtility.compX);
@@ -298,11 +308,11 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                 blackCentroidsY.add((int) centroids[0].y);
                 blackCentroidsY.add((int) centroids[2].y);
 
-                Log.i("CENTROIDS", "Finger: " + fingerCentroidX + " " + fingerCentroidY);
-                Log.i("CENTROIDS", "Blob1: " + blackCentroidsX.get(0) + " " + blackCentroidsY.get(0));
-                Log.i("CENTROIDS", "Blob2: " + blackCentroidsX.get(1) + " " + blackCentroidsY.get(1));
-                android.graphics.Point pt = getScreenDimensions();
-                Log.i("CENTROIDS", "Size: " + pt.x + " " + pt.y);
+                // Log.i("CENTROIDS", "Finger: " + fingerCentroidX + " " + fingerCentroidY);
+                // Log.i("CENTROIDS", "Blob1: " + blackCentroidsX.get(0) + " " + blackCentroidsY.get(0));
+                // Log.i("CENTROIDS", "Blob2: " + blackCentroidsX.get(1) + " " + blackCentroidsY.get(1));
+                // android.graphics.Point pt = getScreenDimensions();
+                // Log.i("CENTROIDS", "Size: " + pt.x + " " + pt.y);
 
                 Point nP = normalizePoint(new Point(fingerCentroidX, fingerCentroidY));
                 Log.i(TAG, "Normalized Finger: " + nP.x + " " + nP.y + " " + mUtility.regionPoints.size());
@@ -310,42 +320,46 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                     if (/*Imgproc.pointPolygonTest(mUtility.statesContours.get(i), nP, false) > 0*/
                             mUtility.polygonTest(nP, mUtility.regionPoints.get(i))) {
                         Log.i(TAG, "polygontestpassed");
-                        if (previousState != i) {
-                            previousState = i;
-                            if (pulseState == -1) {
-                                pulseState = 0;
-                                pulsedPolygon = i;
-                            } else if (pulseState == 1 && pulsedPolygon == i) {
-                                pulseState = 2;
-                            } else if (pulseState == 1 && pulsedPolygon != i) {
-                                pulsedPolygon = i;
-                                pulseState = 0;
-                            }
+                        Log.i("PULSE", "PulsedPolygon: " + pulsedPolygon + " " + i);
+                        if (pulseState == -1) {
+                            pulseState = 0;
+                            pulsedPolygon = i;
+                        } else if (pulseState == 1 && pulsedPolygon == i) {
+                            pulseState = 2;
+                            Log.i("PULSE", "PulsedPolygon: PulsedPolygon: PulsedPolygon: PulsedPolygon: PulsedPolygon: PulsedPolygon: ");
+                        } else if (pulseState == 1 && pulsedPolygon != i) {
+                            pulsedPolygon = i;
+                            pulseState = 0;
+                        } else if (pulseState == 0) {
+                            pulsedPolygon = i;
+                        }
 
-                            if (!mUtility.isPulse()) {
-                                final String toSpeak = mUtility.titles.get(i);
-                                Log.i(TAG, "toSpeak: " + toSpeak);
-                                tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
-                                    @Override
-                                    public void onInit(int status) {
-                                        if (status != TextToSpeech.ERROR) {
-                                            tts.setLanguage(Locale.ENGLISH);
-                                            tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
-                                        }
+                        if (previousState != i && !mUtility.isPulse()) {
+                            previousState = i;
+                            final String toSpeak = mUtility.titles.get(i);
+                            Log.i("PULSE", "toSpeak: " + toSpeak);
+                            tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+                                @Override
+                                public void onInit(int status) {
+                                    if (status != TextToSpeech.ERROR) {
+                                        tts.setLanguage(Locale.ENGLISH);
+                                        tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
                                     }
-                                });
-                            }
-                            if (mUtility.isPulse()) {
-                                final String toDescribe = "Pulse detected";
-                                tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
-                                    @Override
-                                    public void onInit(int status) {
-                                        if (status != TextToSpeech.ERROR) {
-                                            tts.setLanguage(Locale.ENGLISH);
-                                            tts.speak(toDescribe, TextToSpeech.QUEUE_FLUSH, null);
-                                        }
+                                }
+                            });
+                        }
+                        if (mUtility.isPulse() && previousState == i) {
+                            pulseState = 0;
+                            final String toDescribe = "Pulse detected";
+                            tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+                                @Override
+                                public void onInit(int status) {
+                                    if (status != TextToSpeech.ERROR) {
+                                        tts.setLanguage(Locale.ENGLISH);
+                                        tts.speak(toDescribe, TextToSpeech.QUEUE_FLUSH, null);
                                     }
-                                });
+                                }
+                            });
 
 
                                 /*
@@ -368,9 +382,9 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                                 }
                             }
                             */
-                            }
-                            break;
                         }
+                        break;
+
                     }
                 }
 
@@ -381,7 +395,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                 //mSpectrum.copyTo(spectrumLabel);
             }
         }
-            return mRgba;
+        return mRgba;
     }
 
     /*
@@ -445,7 +459,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         if (mUtility.getOrientation() > 2) {
             lowestPoint = tempC[0];
         } else {
-            lowestPoint = tempC[tempC.length-1];
+            lowestPoint = tempC[1];
         }
         double ySQR = Math.pow(tempC[1].y - tempC[0].y, 2);
         double xSQR = Math.pow((double) tempC[1].x - (double) tempC[0].x, 2);
@@ -457,14 +471,16 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         double cornerDist_0_3 = Math.abs(mUtility.Corners[0].y - mUtility.Corners[3].y);
         double cornerDistY = (cornerDist_1_2 < cornerDist_0_3) ? cornerDist_0_3 : cornerDist_1_2;
 
-
         // Actual Y would be lower than this as the image would be slightly tilted but to be on the safe side
-        double extremeY = cornerDistY/scalingFactor + lowestPoint.y;
+        double extremeY = cornerDistY / scalingFactor + lowestPoint.y;
 
         if (mUtility.getOrientation() % 2 == 1) {
             int cols = mRgba.cols();
             int xOffset = (mOpenCvCameraView.getWidth() - cols) / 2;
             extremeY += xOffset;
+
+            Log.i("CALI", "extremeY+Offset" + "\t" + "lX" + "\t" + "lY" + "\t" + "cols" + "\t" + "Width" + "\t" + "Height");
+            Log.i("CALI", extremeY + " " + lowestPoint.x + " " + lowestPoint.y + " " + cols + " " + mOpenCvCameraView.getWidth() + " " + mOpenCvCameraView.getHeight());
 
             if (extremeY > mOpenCvCameraView.getWidth()) {
                 return false;
@@ -485,6 +501,23 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
     }
 
     public void changeCalibrationState(List<MatOfPoint> contours, Context applicationContext) {
+        if (calibrated && calibrationCount > calibrationFrameRate) {
+            final String toSpeak = "Camera Calibrated";
+            Log.i("CALI", toSpeak);
+            /*
+            Log.i(TAG, "toSpeak: " + toSpeak);
+            tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+                @Override
+                public void onInit(int status) {
+                    if (status != TextToSpeech.ERROR) {
+                        tts.setLanguage(Locale.ENGLISH);
+                        tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
+                    }
+                }
+            });
+            */
+        }
+
         if (contours.size() >= 2 && !calibrated) {
             calibrated = isInView(contours);
             calibrationCount = 0;
@@ -497,7 +530,9 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
         if (!calibrated && noCalibrationCount > calibrationFrameRate) {
             // call out for calibration
-            final String toSpeak = "Calibrate your device, entire image not in view";
+            final String toSpeak = "Calibrate your camera, entire image not in view";
+            Log.i("CALI", toSpeak);
+            /*
             Log.i(TAG, "toSpeak: " + toSpeak);
             tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
                 @Override
@@ -508,6 +543,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                     }
                 }
             });
+            */
             noCalibrationCount = 0;
         } else if (!calibrated && noCalibrationCount <= calibrationFrameRate) {
             noCalibrationCount++;

@@ -203,7 +203,6 @@ public class Utility {
     }
 
     public static boolean isPulse() {
-
         return (ColorBlobDetectionActivity.pulseState == 2);
     }
 
