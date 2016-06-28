@@ -435,11 +435,29 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         } else {
             tempC = mUtility.getCentroid(contours, mUtility.compX);
         }
-        Point lowestPoint;
-        if (mUtility.getOrientation() > 2) {
-            lowestPoint = tempC[0];
-        } else {
+        Point lowestPoint = new Point();
+        double toAdd = 0;
+        if (mUtility.getOrientation() == 1) {
             lowestPoint = tempC[1];
+            toAdd = lowestPoint.x;
+        } else if (mUtility.getOrientation() == 2) {
+            lowestPoint = tempC[1];
+            toAdd = lowestPoint.y;
+        } else if (mUtility.getOrientation() == 3 ||(mUtility.getOrientation() == 4) ) {
+            if (contours.size() == 2) {
+                lowestPoint = tempC[0];
+            } else if (contours.size() == 3) {
+                lowestPoint = tempC[1];
+            } else {
+                Log.i(TAG, "This Orientation is not Possible");
+            }
+            if (mUtility.getOrientation() == 3) {
+                toAdd = lowestPoint.x;
+            } else {
+                toAdd = lowestPoint.y;
+            }
+        } else {
+            Log.i(TAG, "This Orientation is not Possible");
         }
         double ySQR = Math.pow((double) tempC[1].y - (double) tempC[0].y, 2);
         double xSQR = Math.pow((double) tempC[1].x - (double) tempC[0].x, 2);
@@ -452,17 +470,22 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         double cornerDistY = (cornerDist_1_2 < cornerDist_0_3) ? cornerDist_0_3 : cornerDist_1_2;
 
         // Actual Y would be lower than this as the image would be slightly tilted but to be on the safe side
-        double extremeY = cornerDistY / scalingFactor + lowestPoint.x;
+        double extreme = 0;
+        if (mUtility.getOrientation() > 2) {
+            extreme = toAdd - (cornerDistY / scalingFactor);
+        } else {
+            extreme = toAdd + (cornerDistY / scalingFactor);
+        }
 
         if (mUtility.getOrientation() % 2 == 1) {
             int cols = mRgba.cols();
             int xOffset = (mOpenCvCameraView.getWidth() - cols) / 2;
-            extremeY += xOffset;
+            extreme += xOffset;
 
-            Log.i("CALIBRATION", "extremeY+Offset" + "\t" + "lX" + "\t" + "lY");
-            Log.i("CALIBRATION", extremeY + " " + lowestPoint.x + " " + lowestPoint.y);
+            Log.i("CALIBRATIO", "extreme+Offset" + "\t" + "lX" + "\t" + "lY");
+            Log.i("CALIBRATIO", extreme + " " + lowestPoint.x + " " + lowestPoint.y);
 
-            if (extremeY > mOpenCvCameraView.getWidth()) {
+            if ((extreme > mOpenCvCameraView.getWidth()) || (extreme <  0)) {
                 return false;
             } else {
                 return true;
@@ -470,9 +493,9 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         } else {
             int rows = mRgba.rows();
             int yOffset = (mOpenCvCameraView.getHeight() - rows) / 2;
-            extremeY += yOffset;
+            extreme += yOffset;
 
-            if (extremeY > mOpenCvCameraView.getHeight()) {
+            if ((extreme > mOpenCvCameraView.getHeight()) || (extreme < 0)) {
                 return false;
             } else {
                 return true;
@@ -491,7 +514,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                 calibrated = false;
                 continousFrameBehaivior = 0;
             }
-            Log.i("YAHA", "NotCalibrated2");
+            Log.i("CalCheck", "NotCalibrated2");
             if ((prevCalibrationState != calibrated) || (calibrationTagsNotVisible > calibrationFrameRate * 2)) {
                 String toSpeak = "Image not placed";
                 speakOut(toSpeak, applicationContext);
@@ -509,8 +532,18 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                 if (prevCalibrationState != calibrated) {
                     calibrationCount = 0;
                     final String toSpeak = "Image now in view";
-                    Log.i("YAHA", "Calibrated");
-                    speakOut(toSpeak, applicationContext);
+                    Log.i("CalCheck", "Calibrated");
+                    // Add in queue even if tts isSpeaking(), speakOut doesn't add if isSpeaking()
+                    // speakOut(toSpeak, applicationContext);
+                    tts = new TextToSpeech(applicationContext, new TextToSpeech.OnInitListener() {
+                        @Override
+                        public void onInit(int status) {
+                            if (status != TextToSpeech.ERROR) {
+                                tts.setLanguage(Locale.ENGLISH);
+                                tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
+                            }
+                        }
+                    });
                 }
             } else {
                 noCalibrationCount++;
@@ -518,7 +551,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                 if ((prevCalibrationState != calibrated) || (noCalibrationCount > calibrationFrameRate)) {
                     noCalibrationCount = 0;
                     final String toSpeak = "Only part of image visible";
-                    Log.i("YAHA", "NotCalibrated");
+                    Log.i("CalCheck", "NotCalibrated");
                     speakOut(toSpeak, applicationContext);
                 }
             }
