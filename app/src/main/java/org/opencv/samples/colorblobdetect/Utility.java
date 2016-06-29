@@ -135,8 +135,7 @@ public class Utility {
                 }
             }
             regionPoints.add(contour);
-
-
+            br.close();
         } catch (IOException e) {
             e.printStackTrace();
             Log.wtf("MTP", "error in parsing");
@@ -192,6 +191,7 @@ public class Utility {
                     contour.add(gP);
                 }
                 regionPoints.add(contour);
+                br.close();
             }
         } catch (
                 IOException e
