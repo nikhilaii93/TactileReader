@@ -6,7 +6,6 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Environment;
 import android.preference.PreferenceManager;
-import android.provider.MediaStore;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.Display;
@@ -32,12 +31,9 @@ import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.imgproc.Moments;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
@@ -74,7 +70,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
     SharedPreferences sp;
 
-    public static boolean calibrated = false;
+    public static boolean calibrated = true;
     public static int calibrationTagsNotVisible = 0;
     public static int calibrationCount = 0;
     public static int noCalibrationCount = 0;
@@ -131,7 +127,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         mUtility = new Utility(getApplicationContext());
         mUtility.parseFile(filename);
 
-        final String speakStr = "Scanning started";
+        final String speakStr = "Scanning " + filename;
         tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
             @Override
             public void onInit(int status) {
@@ -209,10 +205,6 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
             }
         }
-//        for (int i = 0; i < mBlobColorHsv.val.length; i++){
-//            mBlobColorHsv.val[i] /= pointCount;
-//
-//        }
 
         mBlobColorRgba = mUtility.convertScalarHsv2Rgba(mBlobColorHsv);
 
@@ -220,30 +212,8 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                 ", " + mBlobColorRgba.val[2] + ", " + mBlobColorRgba.val[3] + ")");
 
         mDetector.setHsvColor(mBlobColorHsv);
-
         Imgproc.resize(mDetector.getSpectrum(), mSpectrum, SPECTRUM_SIZE);
-
-        // mBlackDetector.setHsvColor(mBlackColorHsv);
-
-        /*
-        Log.i("BLACK", mBlackDetector.getmLowerBound().val[0]+" "
-                +mBlackDetector.getmLowerBound().val[1]+" "
-                +mBlackDetector.getmLowerBound().val[2]+" "
-                +mBlackDetector.getmLowerBound().val[3]);
-        Log.i("BLACK", mBlackDetector.getmUpperBound().val[0]+" "
-                +mBlackDetector.getmUpperBound().val[1]+" "
-                +mBlackDetector.getmUpperBound().val[2]+" "
-                +mBlackDetector.getmUpperBound().val[3]);
-        */
-
-        // Imgproc.resize(mBlackDetector.getSpectrum(), mSpectrum, SPECTRUM_SIZE);
-
         mIsColorSelected = true;
-
-    }
-
-    public boolean onTouch2(View v, MotionEvent event) {
-        return false; // don't need subsequent touch events
     }
 
     public boolean onTouch(View v, MotionEvent event) {
@@ -270,14 +240,10 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
         if (mIsColorSelected) {
             mDetector.process(mRgba);
-            // mBlackDetector.process(mRgba);
             List<MatOfPoint> contours = mDetector.getContours();
-            // List<MatOfPoint> blackContours = mBlackDetector.getContours();
-            // Log.e(TAG, "Contours count: " + contours.size());
             Imgproc.drawContours(mRgba, contours, -1, CONTOUR_COLOR);
-            // Imgproc.drawContours(mRgba, blackContours, -1, CONTOUR_COLOR);
 
-            changeCalibrationState(contours, getApplicationContext());
+             changeCalibrationState(contours, getApplicationContext());
             if (contours.size() == 2 && calibrated && (pulseState == 0)) {
                 pulseDuration++;
                 Log.i("PULSE", "PulseDuration: " + pulseDuration);
@@ -309,19 +275,20 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                 blackCentroidsY.add((int) centroids[0].y);
                 blackCentroidsY.add((int) centroids[2].y);
 
-                // Log.i("CENTROIDS", "Finger: " + fingerCentroidX + " " + fingerCentroidY);
-                // Log.i("CENTROIDS", "Blob1: " + blackCentroidsX.get(0) + " " + blackCentroidsY.get(0));
-                // Log.i("CENTROIDS", "Blob2: " + blackCentroidsX.get(1) + " " + blackCentroidsY.get(1));
-                // android.graphics.Point pt = getScreenDimensions();
-                // Log.i("CENTROIDS", "Size: " + pt.x + " " + pt.y);
+                Log.i("CENTROIDS", "Finger: " + fingerCentroidX + " " + fingerCentroidY);
+                Log.i("CENTROIDS", "Blob1: " + blackCentroidsX.get(0) + " " + blackCentroidsY.get(0));
+                Log.i("CENTROIDS", "Blob2: " + blackCentroidsX.get(1) + " " + blackCentroidsY.get(1));
+                android.graphics.Point pt = getScreenDimensions();
+                Log.i("CENTROIDS", "Size: " + pt.x + " " + pt.y);
 
                 Point nP = normalizePoint(new Point(fingerCentroidX, fingerCentroidY));
                 Log.i(TAG, "Normalized Finger: " + nP.x + " " + nP.y + " " + mUtility.regionPoints.size());
                 for (int i = 0; i < mUtility.regionPoints.size(); i++) {
+                    Log.i(TAG, "For polygonTest: " + mUtility.titles.get(i) + " " + i);
                     if (/*Imgproc.pointPolygonTest(mUtility.statesContours.get(i), nP, false) > 0*/
                             mUtility.polygonTest(nP, mUtility.regionPoints.get(i))) {
                         Log.i(TAG, "polygontestpassed");
-                        Log.i("PULSE", "PulsedPolygon: " + pulsedPolygon + " " + i);
+                        Log.i(TAG, "PulsedPolygon: " + pulsedPolygon + " " + Utility.titles.get(i));
                         if (pulseState == -1) {
                             pulseState = 0;
                             pulsedPolygon = i;
@@ -334,41 +301,28 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                             pulsedPolygon = i;
                         }
 
-                        if (previousState != i && !mUtility.isPulse()) {
+                        if ((previousState != i) && !mUtility.isPulse()) {
                             previousState = i;
-                            String toSpeak = mUtility.titles.get(i);
-                            Log.i("PULSE", "toSpeak: " + toSpeak);
-                            speakOut(toSpeak, getApplicationContext());
+                            String speakStr = mUtility.titles.get(i);
+                            Log.i("PULSE", "toSpeak: " + speakStr);
+                            speakOut(speakStr, getApplicationContext());
                         }
                         if (mUtility.isPulse() && previousState == i) {
                             pulseState = 0;
-                            // String toDescribe = "Pulse detected";
-                            // speakOut(toDescribe, getApplicationContext());
-
                             final String toDescribe = mUtility.descriptions.get(pulsedPolygon);
                             if (toDescribe.startsWith("$AUDIO$")) {
                                 String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
-                                mUtility.playAudio(path + File.separator + toDescribe, toDescribe);
+                                mUtility.playAudio(path + File.separator + filename, toDescribe);
                                 Log.wtf("MTP", "parsing: " + path + "/" + toDescribe);
                             } else {
                                 Log.i(TAG, "toDescribe: " + toDescribe);
-                                tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
-                                    @Override
-                                    public void onInit(int status) {
-                                        if (status != TextToSpeech.ERROR) {
-                                            tts.setLanguage(Locale.ENGLISH);
-                                            tts.speak(toDescribe, TextToSpeech.QUEUE_FLUSH, null);
-                                        }
-                                    }
-                                });
+                                speakOut(toDescribe, getApplicationContext());
                             }
                         }
-                        }
                         break;
-
+                    }
                     }
                 }
-
                 Mat colorLabel = mRgba.submat(4, 68, 4, 68);
                 colorLabel.setTo(mBlobColorRgba);
 
@@ -482,8 +436,8 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             int xOffset = (mOpenCvCameraView.getWidth() - cols) / 2;
             extreme += xOffset;
 
-            Log.i("CALIBRATIO", "extreme+Offset" + "\t" + "lX" + "\t" + "lY");
-            Log.i("CALIBRATIO", extreme + " " + lowestPoint.x + " " + lowestPoint.y);
+            Log.i("CALIBRATION", "extreme+Offset" + "\t" + "lX" + "\t" + "lY");
+            Log.i("CALIBRATION", extreme + " " + lowestPoint.x + " " + lowestPoint.y);
 
             if ((extreme > mOpenCvCameraView.getWidth()) || (extreme <  0)) {
                 return false;
@@ -534,16 +488,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
                     final String toSpeak = "Image now in view";
                     Log.i("CalCheck", "Calibrated");
                     // Add in queue even if tts isSpeaking(), speakOut doesn't add if isSpeaking()
-                    // speakOut(toSpeak, applicationContext);
-                    tts = new TextToSpeech(applicationContext, new TextToSpeech.OnInitListener() {
-                        @Override
-                        public void onInit(int status) {
-                            if (status != TextToSpeech.ERROR) {
-                                tts.setLanguage(Locale.ENGLISH);
-                                tts.speak(toSpeak, TextToSpeech.QUEUE_FLUSH, null);
-                            }
-                        }
-                    });
+                    speakOut(toSpeak, applicationContext);
                 }
             } else {
                 noCalibrationCount++;

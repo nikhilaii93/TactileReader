@@ -87,7 +87,8 @@ public class Utility {
             | Y
      */
 
-    public static void parseFile(String filename){
+    // Old context format parser, without audio files
+    public static void parseFile2(String filename){
         try {
             String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)+ "/Tactile Reader";
             File file = new File(path, filename);
@@ -120,6 +121,9 @@ public class Utility {
                 if (line.equals("=")) {
                     line = br.readLine();
                     titles.add(line.trim());
+                    Log.wtf("Title", titles.get(titles.size()-1));
+                    Log.wtf("Title", titles.get(titles.size()-1));
+
                     if (!firstTime) {
                         regionPoints.add(contour);
                         // Mat m = Converters.vector_Point_to_Mat(contour);
@@ -135,14 +139,14 @@ public class Utility {
                 }
             }
             regionPoints.add(contour);
-            br.close();
+            // br.close();
         } catch (IOException e) {
             e.printStackTrace();
             Log.wtf("MTP", "error in parsing");
         }
     }
 
-    public static void parseFile2(String filename) {
+    public static void parseFile(String filename) {
         try {
             String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
             File file = new File(path + File.separator + filename, filename + ".txt");
@@ -169,30 +173,37 @@ public class Utility {
             }
 
             List<Point> contour = new ArrayList<Point>();
-            boolean firstTime = true;
-            // Skip the first empty line
+            // Skip line = "="
+            line = br.readLine();
             while ((line = br.readLine()) != null) {
-                line = br.readLine();
                 titles.add(line.trim());
                 line = br.readLine();
                 if (line.startsWith("$AUDIO$")) {
                     descriptions.add(line.trim());
                 } else {
                     String desc = "";
-                    while ((line = br.readLine()) != "=") {
+                    // Skip line = "$TEXT$"
+                    line = br.readLine();
+                    while (!line.equals("=")) {
                         desc += line;
+                        line = br.readLine();
                     }
                     descriptions.add(desc);
                 }
-                while ((line = br.readLine()) != "=") {
+                // Skip line = "="
+                line = br.readLine();
+                while (!line.equals("=")) {
                     Point gP = getPoint(line);
                     gP.x -= xOffset;
                     gP.y -= yOffset;
                     contour.add(gP);
+                    line = br.readLine();
                 }
                 regionPoints.add(contour);
-                br.close();
+                // Skip line = "="
+                line = br.readLine();
             }
+            br.close();
         } catch (
                 IOException e
                 )
