@@ -139,7 +139,7 @@ public class Utility {
                 }
             }
             regionPoints.add(contour);
-            // br.close();
+            br.close();
         } catch (IOException e) {
             e.printStackTrace();
             Log.wtf("MTP", "error in parsing");
@@ -180,6 +180,7 @@ public class Utility {
                 line = br.readLine();
                 if (line.startsWith("$AUDIO$")) {
                     descriptions.add(line.trim());
+                    line = br.readLine();
                 } else {
                     String desc = "";
                     // Skip line = "$TEXT$"
@@ -200,8 +201,6 @@ public class Utility {
                     line = br.readLine();
                 }
                 regionPoints.add(contour);
-                // Skip line = "="
-                line = br.readLine();
             }
             br.close();
         } catch (

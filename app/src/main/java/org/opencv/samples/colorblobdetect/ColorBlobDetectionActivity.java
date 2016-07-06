@@ -464,7 +464,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             calibrationCount = 0;
             noCalibrationCount = 0;
             continousFrameBehaivior++;
-            if (continousFrameBehaivior > 3) {
+            if (continousFrameBehaivior > 10) {
                 calibrated = false;
                 continousFrameBehaivior = 0;
             }
