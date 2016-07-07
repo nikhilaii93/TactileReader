@@ -56,7 +56,9 @@ public class FirstActivity extends Activity {
 
     String curr_url;
 
-    String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader/";
+//    String envpath = Environment.getDataDirectory() + File.separator + "Tactile Reader";
+     String envpath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
+
     String file_name;
 
     ProgressDialog prog;
@@ -160,7 +162,7 @@ public class FirstActivity extends Activity {
                 }
 
                 try {
-                    unzip(path + file_name, path);
+                    unzip(envpath + file_name, envpath);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -234,7 +236,7 @@ public class FirstActivity extends Activity {
     }
 
     private void deleteDir(String dirName){
-        File dir = new File(path + dirName);
+        File dir = new File(envpath + dirName);
         if(dir.exists()){
             if (dir.isDirectory())
             {

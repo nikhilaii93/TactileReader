@@ -47,6 +47,11 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
     private Scalar mBlobColorHsv;
     private TextToSpeech tts;
 
+//    String envpath = Environment.getDataDirectory().getPath() + File.separator + "Tactile Reader";
+     String envpath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
+
+
+
     // private Scalar               mBlackColorHsv;
 
     private ColorBlobDetector mDetector;
@@ -81,6 +86,12 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
     public static int calibrationFrameRate = 100;
     public static int continousFrameBehaivior = 0;
 
+    public static int allowedFingerMovement = 50;
+    public static int fingerStaticCount = 0;
+    public static int fingerStaticLimit = 3;
+    public static Point previousFingerPosition = null;
+    public static int fingerApprovalCount = 0;
+
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
@@ -114,7 +125,8 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         setContentView(R.layout.color_blob_detection_surface_view);
-
+        //android.graphics.Point sSize = getScreenDimensions();
+        //getWindow().setLayout(sSize.x, sSize.y);
 //        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
 
         sp = PreferenceManager.getDefaultSharedPreferences(this);
@@ -243,7 +255,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             List<MatOfPoint> contours = mDetector.getContours();
             Imgproc.drawContours(mRgba, contours, -1, CONTOUR_COLOR);
 
-             changeCalibrationState(contours, getApplicationContext());
+            //changeCalibrationState(contours, getApplicationContext());
             if (contours.size() == 2 && calibrated && (pulseState == 0)) {
                 pulseDuration++;
                 Log.i("PULSE", "PulseDuration: " + pulseDuration);
@@ -283,52 +295,56 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
 
                 Point nP = normalizePoint(new Point(fingerCentroidX, fingerCentroidY));
                 Log.i(TAG, "Normalized Finger: " + nP.x + " " + nP.y + " " + mUtility.regionPoints.size());
-                for (int i = 0; i < mUtility.regionPoints.size(); i++) {
-                    Log.i(TAG, "For polygonTest: " + mUtility.titles.get(i) + " " + i);
-                    if (/*Imgproc.pointPolygonTest(mUtility.statesContours.get(i), nP, false) > 0*/
-                            mUtility.polygonTest(nP, mUtility.regionPoints.get(i))) {
-                        Log.i(TAG, "polygontestpassed");
-                        Log.i(TAG, "PulsedPolygon: " + pulsedPolygon + " " + Utility.titles.get(i));
-                        if (pulseState == -1) {
-                            pulseState = 0;
-                            pulsedPolygon = i;
-                        } else if (pulseState == 1 && pulsedPolygon == i) {
-                            pulseState = 2;
-                        } else if (pulseState == 1 && pulsedPolygon != i) {
-                            pulsedPolygon = i;
-                            pulseState = 0;
-                        } else if (pulseState == 0) {
-                            pulsedPolygon = i;
-                        }
-
-                        if ((previousState != i) && !mUtility.isPulse()) {
-                            previousState = i;
-                            String speakStr = mUtility.titles.get(i);
-                            Log.i("PULSE", "toSpeak: " + speakStr);
-                            speakOut(speakStr, getApplicationContext());
-                        }
-                        if (mUtility.isPulse() && previousState == i) {
-                            pulseState = 0;
-                            final String toDescribe = mUtility.descriptions.get(pulsedPolygon);
-                            if (toDescribe.startsWith("$AUDIO$")) {
-                                String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
-                                mUtility.playAudio(path + File.separator + filename, toDescribe);
-                                Log.wtf("MTP", "parsing: " + path + "/" + toDescribe);
-                            } else {
-                                Log.i(TAG, "toDescribe: " + toDescribe);
-                                speakOut(toDescribe, getApplicationContext());
+                if (Utility.isFingerStatic(nP) || true) {
+                    for (int i = 0; i < mUtility.regionPoints.size(); i++) {
+                        Log.i(TAG, "For polygonTest: " + mUtility.titles.get(i) + " " + i);
+                        if (/*Imgproc.pointPolygonTest(mUtility.statesContours.get(i), nP, false) > 0*/
+                                mUtility.polygonTest(nP, mUtility.regionPoints.get(i))) {
+                            Log.i(TAG, "polygontestpassed");
+                            Log.i(TAG, "PulsedPolygon: " + pulsedPolygon + " " + Utility.titles.get(i) + " " + i);
+                            if (pulseState == -1) {
+                                pulseState = 0;
+                                pulsedPolygon = i;
+                            } else if (pulseState == 1 && pulsedPolygon == i) {
+                                pulseState = 2;
+                            } else if (pulseState == 1 && pulsedPolygon != i) {
+                                pulsedPolygon = i;
+                                pulseState = 0;
+                            } else if (pulseState == 0) {
+                                pulsedPolygon = i;
                             }
+
+                            if ((previousState != i) && !mUtility.isPulse()) {
+                                previousState = i;
+                                String speakStr = mUtility.titles.get(i);
+                                Log.i("PULSE", "toSpeak: " + speakStr);
+                                speakOut(speakStr, getApplicationContext());
+                            }
+                            if (mUtility.isPulse() && previousState == i) {
+                                pulseState = 0;
+                                final String toDescribe = mUtility.descriptions.get(pulsedPolygon);
+                                if (toDescribe.startsWith("$AUDIO$")) {
+                                    envpath = Environment.getDataDirectory() + File.separator + "Tactile Reader";
+
+                                    mUtility.playAudio(envpath + File.separator + filename, toDescribe);
+
+                                    Log.wtf("MTP", "parsing: " + envpath + "/" + toDescribe);
+                                } else {
+                                    Log.i(TAG, "toDescribe: " + toDescribe);
+                                    speakOut(toDescribe, getApplicationContext());
+                                }
+                            }
+                            break;
                         }
-                        break;
-                    }
                     }
                 }
-                Mat colorLabel = mRgba.submat(4, 68, 4, 68);
-                colorLabel.setTo(mBlobColorRgba);
-
-                //Mat spectrumLabel = mRgba.submat(4, 4 + mSpectrum.rows(), 70, 70 + mSpectrum.cols());
-                //mSpectrum.copyTo(spectrumLabel);
             }
+            Mat colorLabel = mRgba.submat(4, 68, 4, 68);
+            colorLabel.setTo(mBlobColorRgba);
+
+            //Mat spectrumLabel = mRgba.submat(4, 4 + mSpectrum.rows(), 70, 70 + mSpectrum.cols());
+            //mSpectrum.copyTo(spectrumLabel);
+        }
         return mRgba;
     }
 
@@ -397,7 +413,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
         } else if (mUtility.getOrientation() == 2) {
             lowestPoint = tempC[1];
             toAdd = lowestPoint.y;
-        } else if (mUtility.getOrientation() == 3 ||(mUtility.getOrientation() == 4) ) {
+        } else if (mUtility.getOrientation() == 3 || (mUtility.getOrientation() == 4)) {
             if (contours.size() == 2) {
                 lowestPoint = tempC[0];
             } else if (contours.size() == 3) {
@@ -439,7 +455,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             Log.i("CALIBRATION", "extreme+Offset" + "\t" + "lX" + "\t" + "lY");
             Log.i("CALIBRATION", extreme + " " + lowestPoint.x + " " + lowestPoint.y);
 
-            if ((extreme > mOpenCvCameraView.getWidth()) || (extreme <  0)) {
+            if ((extreme > mOpenCvCameraView.getWidth()) || (extreme < 0)) {
                 return false;
             } else {
                 return true;
@@ -481,7 +497,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             Log.i("CALIBRATION", "IsCalibrated: " + calibrated);
             if (calibrated) {
                 calibrationCount++;
-                calibrationCount = calibrationCount%calibrationFrameRate;
+                calibrationCount = calibrationCount % calibrationFrameRate;
                 noCalibrationCount = 0;
                 if (prevCalibrationState != calibrated) {
                     calibrationCount = 0;
@@ -502,7 +518,7 @@ public class ColorBlobDetectionActivity extends Activity implements OnTouchListe
             }
         } else {
             String toSpeak = "Conditions not suitable, many tags visible";
-            speakOut(toSpeak, applicationContext);
+            // speakOut(toSpeak, applicationContext);
         }
     }
 

@@ -31,6 +31,11 @@ public class StartActivity extends Activity {
     TextView colortv;
     RadioGroup or;
 
+//    String envpath = Environment.getDataDirectory().getPath() + File.separator + "Tactile Reader";
+    String envpath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
+
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,16 +46,25 @@ public class StartActivity extends Activity {
 
         spinner = (Spinner)findViewById(R.id.spinner);
 
-        String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
         ArrayList<String> filenames = new ArrayList<>();
-        Log.wtf("MTP", "Path: " + path);
-        File f = new File(path);
-        File files[] = f.listFiles();
-        Log.d("MTP", "Size: "+ files.length);
-        for (int i=0; i < files.length; i++) {
-            filenames.add(files[i].getName());
-            Log.d("MTP", "FileName:" + files[i].getName());
+        Log.wtf("MTP", "Path: " + envpath);
+        File f = new File(envpath);
+        Log.d("MTP", "Dir read 1");
+
+        if (!f.exists()) {
+            f.mkdir();
+            Log.wtf("MTP", "MKDIR executed");
         }
+
+        File files[] = f.listFiles();
+        if(files!=null){
+            Log.d("MTP", "Size: "+ files.length);
+            for (int i=0; i < files.length; i++) {
+                filenames.add(files[i].getName());
+                Log.d("MTP", "FileName:" + files[i].getName());
+            }
+        }
+
 
         if(filenames==null){
             filenames.add(0, "No saved Contexts");
@@ -99,6 +113,8 @@ public class StartActivity extends Activity {
 
                 sp.edit().putInt("orientation", checkedId).apply();
                 Utility.orientation = index;
+
+                Log.wtf("MTP", "orient: " + Utility.getOrientation());
 
 //                Log.wtf("OCVSample::Activity", "Orientation: " + Utility.orientation);
 

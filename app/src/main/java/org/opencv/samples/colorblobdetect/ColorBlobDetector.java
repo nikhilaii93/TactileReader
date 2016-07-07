@@ -16,7 +16,7 @@ public class ColorBlobDetector {
     private Scalar mLowerBound = new Scalar(0);
     private Scalar mUpperBound = new Scalar(0);
     // Minimum contour area in percent for contours filtering
-    private static double mMinContourArea = 0.002;
+    private static double mMinContourArea = 0.2;
     // Color radius for range checking in HSV color space
 
     // Color radius changed

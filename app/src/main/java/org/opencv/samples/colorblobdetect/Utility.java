@@ -7,6 +7,7 @@ package org.opencv.samples.colorblobdetect;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Environment;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
@@ -24,6 +25,7 @@ import org.opencv.utils.Converters;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -53,17 +55,21 @@ public class Utility {
     static Point[] Corners;
     static List<String> titles;
     static List<String> descriptions;
-    static List<MatOfPoint2f> regionContours;
     static List<List<Point>> regionPoints;
     static String audioFormat = ".wav";
     public static int orientation;
     public static MediaPlayer mp = new MediaPlayer();
 
+//    static String envpath = Environment.getDataDirectory().getPath() + File.separator + "Tactile Reader";
+    static String envpath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
+
+
+
     public Utility(Context currCont) {
         this.cont = currCont;
         Corners = new Point[4];
         titles = new ArrayList<String>();
-        regionContours = new ArrayList<MatOfPoint2f>();
+        descriptions = new ArrayList<String>();
         regionPoints = new ArrayList<List<Point>>();
     }
 
@@ -88,12 +94,13 @@ public class Utility {
      */
 
     // Old context format parser, without audio files
-    public static void parseFile2(String filename){
+    public static void parseFile2(String filename) {
         try {
-            String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)+ "/Tactile Reader";
+//            String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
+            String path = Environment.getDataDirectory() + File.separator + "Tactile Reader";
             File file = new File(path, filename);
 
-            Log.wtf("MTP", "parsing: " + path + "/"+filename);
+            Log.wtf("MTP", "parsing: " + path + File.separator + filename);
 
             BufferedReader br = new BufferedReader(new FileReader(file));
 
@@ -101,8 +108,8 @@ public class Utility {
             String line = br.readLine();
             // Fill corners
             int t = 0;
-            while(t < 4 && (line = br.readLine()) != null) {
-                Log.i("Line", line+'\n');
+            while (t < 4 && (line = br.readLine()) != null) {
+                Log.i("Line", line + '\n');
                 Corners[t] = getPoint(line);
                 t++;
             }
@@ -121,8 +128,8 @@ public class Utility {
                 if (line.equals("=")) {
                     line = br.readLine();
                     titles.add(line.trim());
-                    Log.wtf("Title", titles.get(titles.size()-1));
-                    Log.wtf("Title", titles.get(titles.size()-1));
+                    Log.wtf("Title", titles.get(titles.size() - 1));
+                    Log.wtf("Title", titles.get(titles.size() - 1));
 
                     if (!firstTime) {
                         regionPoints.add(contour);
@@ -148,10 +155,11 @@ public class Utility {
 
     public static void parseFile(String filename) {
         try {
-            String path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
-            File file = new File(path + File.separator + filename, filename + ".txt");
+//            envpath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS) + "/Tactile Reader";
 
-            Log.wtf("MTP", "parsing: " + path + "/" + filename + "/" + filename + ".txt");
+            File file = new File(envpath + File.separator + filename, filename + ".txt");
+
+            Log.wtf("MTP", "parsing: " + envpath + "/" + filename + "/" + filename + ".txt");
 
             BufferedReader br = new BufferedReader(new FileReader(file));
 
@@ -171,8 +179,6 @@ public class Utility {
                 Corners[i].x -= xOffset;
                 Corners[i].y -= yOffset;
             }
-
-            List<Point> contour = new ArrayList<Point>();
             // Skip line = "="
             line = br.readLine();
             while ((line = br.readLine()) != null) {
@@ -193,6 +199,7 @@ public class Utility {
                 }
                 // Skip line = "="
                 line = br.readLine();
+                List<Point> contour = new ArrayList<Point>();
                 while (!line.equals("=")) {
                     Point gP = getPoint(line);
                     gP.x -= xOffset;
@@ -205,8 +212,7 @@ public class Utility {
             br.close();
         } catch (
                 IOException e
-                )
-        {
+                ) {
             e.printStackTrace();
             Log.wtf("MTP", "error in parsing");
         }
@@ -221,10 +227,15 @@ public class Utility {
         Context appContext = cont;
         mp = new MediaPlayer();
         try {
+            //File mediaFile_mp4_android = new File(filePath + File.separator + fileName + audioFormat);
+            //String filePath_mp4_android = String.valueOf(mediaFile_mp4_android);
+            //File file_mp4_android = new File(filePath_mp4_android);
+            //Uri contentUri = Uri.fromFile(file_mp4_android);
+            //mp.setDataSource(String.valueOf(contentUri));
             mp.setDataSource(filePath + File.separator + fileName + audioFormat);
             mp.prepare();
         } catch (IOException e) {
-            Log.i("PLAY_AUDIO", "Audio File cannot be played");
+            Log.i("MTP", "Audio File cannot be played");
             e.printStackTrace();
         }
         mp.start();
@@ -247,7 +258,7 @@ public class Utility {
     public Point[] getCentroid(List<MatOfPoint> Contour, Comparator comp) {
         if (Contour.size() == 2) {
             return getCentroid2(Contour, comp);
-        } else  {
+        } else {
             return getCentroid3(Contour, comp);
         }
     }
@@ -345,6 +356,35 @@ public class Utility {
     // Retuns orientation number between 1 to 4
     public static int getOrientation() {
         return orientation;
+    }
+
+    public static boolean isFingerStatic(Point normalizedFinger) {
+        if (ColorBlobDetectionActivity.fingerApprovalCount > 0) {
+            ColorBlobDetectionActivity.fingerApprovalCount--;
+            return true;
+        }
+        if (ColorBlobDetectionActivity.previousFingerPosition == null) {
+            ColorBlobDetectionActivity.previousFingerPosition = new Point(normalizedFinger.x, normalizedFinger.y);
+            ColorBlobDetectionActivity.fingerStaticCount = 0;
+            return false;
+        } else {
+            if (normalizedFinger.x < (ColorBlobDetectionActivity.previousFingerPosition.x + ColorBlobDetectionActivity.allowedFingerMovement)
+                    && normalizedFinger.x > (ColorBlobDetectionActivity.previousFingerPosition.x - ColorBlobDetectionActivity.allowedFingerMovement)
+                    && normalizedFinger.y < (ColorBlobDetectionActivity.previousFingerPosition.y + ColorBlobDetectionActivity.allowedFingerMovement)
+                    && normalizedFinger.y > (ColorBlobDetectionActivity.previousFingerPosition.y - ColorBlobDetectionActivity.allowedFingerMovement)) {
+                ColorBlobDetectionActivity.fingerStaticCount++;
+            } else {
+                ColorBlobDetectionActivity.previousFingerPosition = new Point(normalizedFinger.x, normalizedFinger.y);
+                ColorBlobDetectionActivity.fingerStaticCount = 0;
+            }
+            if (ColorBlobDetectionActivity.fingerStaticCount > ColorBlobDetectionActivity.fingerStaticLimit) {
+                ColorBlobDetectionActivity.fingerStaticCount = 0;
+                ColorBlobDetectionActivity.fingerApprovalCount = 5;
+                return true;
+            } else {
+                return false;
+            }
+        }
     }
 
 }
